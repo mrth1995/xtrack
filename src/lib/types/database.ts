@@ -163,6 +163,20 @@ export interface Database {
 					expires_at: string;
 				};
 			};
+			get_or_create_active_household_invite: {
+				Args: { p_household_id: string };
+				Returns: {
+					id: string;
+					household_id: string;
+					code: string;
+					created_by: string;
+					expires_at: string;
+					used_at: string | null;
+					used_by: string | null;
+					revoked_at: string | null;
+					created_at: string;
+				};
+			};
 			current_household_id: {
 				Args: Record<string, never>;
 				Returns: string | null;

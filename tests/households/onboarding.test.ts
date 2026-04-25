@@ -372,26 +372,20 @@ describe('getOrCreateActiveInviteCode service — invite management', () => {
 	it('returns the existing active invite when one exists (does not create a new one)', async () => {
 		const { getOrCreateActiveInviteCode } = await import('$lib/server/households/service');
 
-		const mockChain = {
-			eq: vi.fn().mockReturnThis(),
-			is: vi.fn().mockReturnThis(),
-			gt: vi.fn().mockReturnThis(),
-			order: vi.fn().mockReturnThis(),
-			limit: vi.fn().mockReturnThis(),
-			maybeSingle: vi.fn().mockResolvedValue({ data: ACTIVE_INVITE, error: null })
-		};
 		const mockClient = {
-			from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(mockChain) }),
-			rpc: vi.fn() // should NOT be called
+			from: vi.fn(),
+			rpc: vi.fn().mockResolvedValue({ data: ACTIVE_INVITE, error: null })
 		};
 
 		const result = await getOrCreateActiveInviteCode(mockClient as never, HOUSEHOLD.id);
+		expect(mockClient.rpc).toHaveBeenCalledWith('get_or_create_active_household_invite', {
+			p_household_id: HOUSEHOLD.id
+		});
+		expect(mockClient.from).not.toHaveBeenCalled();
 		expect(result.code).toBe('ABCD1234');
 		// Confirm that Copy code is accessible — the invite has a code
 		expect(typeof result.code).toBe('string');
 		expect(result.code.length).toBeGreaterThan(0);
-		// Should NOT have called rpc (no invite creation needed)
-		expect(mockClient.rpc).not.toHaveBeenCalled();
 	});
 
 	it('creates a new invite when no active invite exists (expired invite scenario)', async () => {
@@ -403,23 +397,16 @@ describe('getOrCreateActiveInviteCode service — invite management', () => {
 			code: 'NEWCODE1'
 		};
 
-		const mockChain = {
-			eq: vi.fn().mockReturnThis(),
-			is: vi.fn().mockReturnThis(),
-			gt: vi.fn().mockReturnThis(),
-			order: vi.fn().mockReturnThis(),
-			limit: vi.fn().mockReturnThis(),
-			maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }) // no active invite
-		};
 		const mockClient = {
-			from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(mockChain) }),
+			from: vi.fn(),
 			rpc: vi.fn().mockResolvedValue({ data: newInvite, error: null })
 		};
 
 		const result = await getOrCreateActiveInviteCode(mockClient as never, HOUSEHOLD.id);
-		expect(mockClient.rpc).toHaveBeenCalledWith('create_household_invite', {
+		expect(mockClient.rpc).toHaveBeenCalledWith('get_or_create_active_household_invite', {
 			p_household_id: HOUSEHOLD.id
 		});
+		expect(mockClient.from).not.toHaveBeenCalled();
 		expect(result.code).toBe('NEWCODE1');
 	});
 
@@ -432,37 +419,24 @@ describe('getOrCreateActiveInviteCode service — invite management', () => {
 			code: 'FRESH001'
 		};
 
-		// maybeSingle returns null because query filters out used invites (is null used_at)
-		const mockChain = {
-			eq: vi.fn().mockReturnThis(),
-			is: vi.fn().mockReturnThis(),
-			gt: vi.fn().mockReturnThis(),
-			order: vi.fn().mockReturnThis(),
-			limit: vi.fn().mockReturnThis(),
-			maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
-		};
 		const mockClient = {
-			from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(mockChain) }),
+			from: vi.fn(),
 			rpc: vi.fn().mockResolvedValue({ data: freshInvite, error: null })
 		};
 
 		const result = await getOrCreateActiveInviteCode(mockClient as never, HOUSEHOLD.id);
+		expect(mockClient.rpc).toHaveBeenCalledWith('get_or_create_active_household_invite', {
+			p_household_id: HOUSEHOLD.id
+		});
+		expect(mockClient.from).not.toHaveBeenCalled();
 		expect(result.code).toBe('FRESH001');
 	});
 
 	it('throws when RPC invite creation fails', async () => {
 		const { getOrCreateActiveInviteCode } = await import('$lib/server/households/service');
 
-		const mockChain = {
-			eq: vi.fn().mockReturnThis(),
-			is: vi.fn().mockReturnThis(),
-			gt: vi.fn().mockReturnThis(),
-			order: vi.fn().mockReturnThis(),
-			limit: vi.fn().mockReturnThis(),
-			maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
-		};
 		const mockClient = {
-			from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(mockChain) }),
+			from: vi.fn(),
 			rpc: vi.fn().mockResolvedValue({
 				data: null,
 				error: { message: 'permission denied for table household_invites' }
@@ -472,6 +446,7 @@ describe('getOrCreateActiveInviteCode service — invite management', () => {
 		await expect(
 			getOrCreateActiveInviteCode(mockClient as never, HOUSEHOLD.id)
 		).rejects.toThrow('permission denied');
+		expect(mockClient.from).not.toHaveBeenCalled();
 	});
 });
 

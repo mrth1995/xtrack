@@ -153,24 +153,7 @@ export async function getOrCreateActiveInviteCode(
 	client: SupabaseClient,
 	householdId: string
 ): Promise<InviteRow> {
-	// Look for an active, unused, unexpired invite for this household
-	const { data: existing } = await client
-		.from('household_invites')
-		.select('*')
-		.eq('household_id', householdId)
-		.is('used_at', null)
-		.is('revoked_at', null)
-		.gt('expires_at', new Date().toISOString())
-		.order('created_at', { ascending: false })
-		.limit(1)
-		.maybeSingle();
-
-	if (existing) {
-		return existing as InviteRow;
-	}
-
-	// No active invite — create a new one via the SQL function
-	const { data, error } = await client.rpc('create_household_invite', {
+	const { data, error } = await client.rpc('get_or_create_active_household_invite', {
 		p_household_id: householdId
 	});
 
