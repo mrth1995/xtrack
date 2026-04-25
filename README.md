@@ -84,6 +84,43 @@ If you want to run against a local Supabase stack instead of a hosted project:
 
 Local Supabase ports in this repo are defined in [supabase/config.toml](/Users/ridwan.taufik/Projects/personal/xtrack/supabase/config.toml:1).
 
+## Phase 1 UAT Retest Setup
+
+After pulling the Phase 1 UAT fixes, use this sequence before retesting invite creation or join:
+
+1. Confirm `.env` has real Supabase values:
+
+   ```env
+   PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
+   PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+   SUPABASE_PROJECT_REF=<your-project-ref>
+   ```
+
+   `PUBLIC_SUPABASE_URL=https://placeholder.supabase.co` is intentionally rejected at startup with setup guidance.
+
+2. Apply the latest database migrations:
+
+   ```bash
+   supabase db push
+   ```
+
+   The invite flow requires both `lookup_household_invite` and `get_or_create_active_household_invite`.
+
+3. Restart the dev server after changing `.env` or applying migrations:
+
+   ```bash
+   npm run dev
+   ```
+
+4. Retest the Phase 1 UAT gaps:
+
+   - cold start with real Supabase env values
+   - migration/setup validation with no placeholder URL
+   - signed-in home shows the logout button
+   - invite settings reuses the same active code on repeated loads
+   - join by valid active invite code shows the household confirmation
+   - household details and member list are reachable after joining
+
 ## Useful Commands
 
 - `npm run dev` - start the app in development mode
