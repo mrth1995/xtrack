@@ -186,29 +186,22 @@ describe('lookupInviteCode service', () => {
 	it('returns household name and invite metadata for a valid code', async () => {
 		const { lookupInviteCode } = await import('$lib/server/households/service');
 
-		const mockInviteRow = {
-			id: ACTIVE_INVITE.id,
+		const mockLookupRow = {
+			household_id: HOUSEHOLD.id,
+			household_name: HOUSEHOLD.name,
+			household_created_by: HOUSEHOLD.created_by,
+			household_created_at: HOUSEHOLD.created_at,
 			code: ACTIVE_INVITE.code,
-			expires_at: ACTIVE_INVITE.expires_at,
-			used_at: null,
-			revoked_at: null,
-			households: {
-				id: HOUSEHOLD.id,
-				name: HOUSEHOLD.name,
-				created_by: HOUSEHOLD.created_by,
-				created_at: HOUSEHOLD.created_at
-			}
-		};
-
-		const mockSelect = {
-			eq: vi.fn().mockReturnThis(),
-			single: vi.fn().mockResolvedValue({ data: mockInviteRow, error: null })
+			expires_at: ACTIVE_INVITE.expires_at
 		};
 		const mockClient = {
-			from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(mockSelect) })
+			rpc: vi.fn().mockResolvedValue({ data: [mockLookupRow], error: null })
 		};
 
 		const result = await lookupInviteCode(mockClient as never, 'abcd1234');
+		expect(mockClient.rpc).toHaveBeenCalledWith('lookup_household_invite', {
+			p_code: 'ABCD1234'
+		});
 		expect(result.household.name).toBe('The Smiths');
 		expect(result.invite.code).toBe(ACTIVE_INVITE.code);
 	});
@@ -216,15 +209,11 @@ describe('lookupInviteCode service', () => {
 	it('throws HouseholdServiceError with hint "invalid_code" when code is not found', async () => {
 		const { lookupInviteCode } = await import('$lib/server/households/service');
 
-		const mockSelect = {
-			eq: vi.fn().mockReturnThis(),
-			single: vi.fn().mockResolvedValue({
-				data: null,
-				error: { message: 'PGRST116', code: 'PGRST116' }
-			})
-		};
 		const mockClient = {
-			from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(mockSelect) })
+			rpc: vi.fn().mockResolvedValue({
+				data: null,
+				error: { message: 'Invalid invite code', hint: 'invalid_code' }
+			})
 		};
 
 		await expect(lookupInviteCode(mockClient as never, 'BADCODE')).rejects.toMatchObject({
@@ -235,21 +224,11 @@ describe('lookupInviteCode service', () => {
 	it('throws with hint "already_used" when invite used_at is set', async () => {
 		const { lookupInviteCode } = await import('$lib/server/households/service');
 
-		const mockInviteRow = {
-			id: USED_INVITE.id,
-			code: USED_INVITE.code,
-			expires_at: new Date(Date.now() + 3600000).toISOString(), // not expired
-			used_at: USED_INVITE.used_at, // already used
-			revoked_at: null,
-			households: HOUSEHOLD
-		};
-
-		const mockSelect = {
-			eq: vi.fn().mockReturnThis(),
-			single: vi.fn().mockResolvedValue({ data: mockInviteRow, error: null })
-		};
 		const mockClient = {
-			from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(mockSelect) })
+			rpc: vi.fn().mockResolvedValue({
+				data: null,
+				error: { message: 'Invite code has already been used', hint: 'already_used' }
+			})
 		};
 
 		await expect(lookupInviteCode(mockClient as never, 'USEDCODE')).rejects.toMatchObject({
@@ -260,21 +239,11 @@ describe('lookupInviteCode service', () => {
 	it('throws with hint "expired" when invite is past expires_at', async () => {
 		const { lookupInviteCode } = await import('$lib/server/households/service');
 
-		const mockInviteRow = {
-			id: EXPIRED_INVITE.id,
-			code: EXPIRED_INVITE.code,
-			expires_at: EXPIRED_INVITE.expires_at, // in the past
-			used_at: null,
-			revoked_at: null,
-			households: HOUSEHOLD
-		};
-
-		const mockSelect = {
-			eq: vi.fn().mockReturnThis(),
-			single: vi.fn().mockResolvedValue({ data: mockInviteRow, error: null })
-		};
 		const mockClient = {
-			from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(mockSelect) })
+			rpc: vi.fn().mockResolvedValue({
+				data: null,
+				error: { message: 'Invite code has expired', hint: 'expired' }
+			})
 		};
 
 		await expect(lookupInviteCode(mockClient as never, 'EXPCODE')).rejects.toMatchObject({
@@ -285,21 +254,11 @@ describe('lookupInviteCode service', () => {
 	it('throws with hint "revoked" when revoked_at is set', async () => {
 		const { lookupInviteCode } = await import('$lib/server/households/service');
 
-		const mockInviteRow = {
-			id: ACTIVE_INVITE.id,
-			code: 'REVOKEDX',
-			expires_at: new Date(Date.now() + 3600000).toISOString(),
-			used_at: null,
-			revoked_at: '2026-04-25T00:00:00Z',
-			households: HOUSEHOLD
-		};
-
-		const mockSelect = {
-			eq: vi.fn().mockReturnThis(),
-			single: vi.fn().mockResolvedValue({ data: mockInviteRow, error: null })
-		};
 		const mockClient = {
-			from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(mockSelect) })
+			rpc: vi.fn().mockResolvedValue({
+				data: null,
+				error: { message: 'Invite code has been revoked', hint: 'revoked' }
+			})
 		};
 
 		await expect(lookupInviteCode(mockClient as never, 'REVOKEDX')).rejects.toMatchObject({
@@ -543,25 +502,22 @@ describe('Structural checks — key identifiers', () => {
 	});
 
 	it('service lookupInviteCode normalises code to uppercase', async () => {
-		// White-box check: service calls toUpperCase before query
+		// White-box check: service calls toUpperCase before RPC
 		const { lookupInviteCode } = await import('$lib/server/households/service');
 
-		const mockSelect = {
-			eq: vi.fn().mockReturnThis(),
-			single: vi.fn().mockResolvedValue({
+		const mockClient = {
+			rpc: vi.fn().mockResolvedValue({
 				data: null,
 				error: { message: 'not found' }
 			})
 		};
-		const mockClient = {
-			from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(mockSelect) })
-		};
 
 		await lookupInviteCode(mockClient as never, 'abcdefgh').catch(() => {
-			// We only care about the eq call, not the error
+			// We only care about the RPC payload, not the error
 		});
 
-		// The .eq call should receive the uppercased code
-		expect(mockSelect.eq).toHaveBeenCalledWith('code', 'ABCDEFGH');
+		expect(mockClient.rpc).toHaveBeenCalledWith('lookup_household_invite', {
+			p_code: 'ABCDEFGH'
+		});
 	});
 });

@@ -142,6 +142,17 @@ export interface Database {
 				Args: { p_code: string };
 				Returns: { household_id: string; household_name: string };
 			};
+			lookup_household_invite: {
+				Args: { p_code: string };
+				Returns: Array<{
+					household_id: string;
+					household_name: string;
+					household_created_by: string;
+					household_created_at: string;
+					code: string;
+					expires_at: string;
+				}>;
+			};
 			create_household_invite: {
 				Args: { p_household_id: string };
 				Returns: {

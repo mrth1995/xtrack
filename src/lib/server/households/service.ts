@@ -17,6 +17,15 @@ export interface LookupInviteResult {
 	invite: Pick<InviteRow, 'code' | 'expires_at'>;
 }
 
+interface LookupInviteRpcRow {
+	household_id: string;
+	household_name: string;
+	household_created_by: string;
+	household_created_at: string;
+	code: string;
+	expires_at: string;
+}
+
 // ── Service methods ───────────────────────────────────────────────────────────
 
 /**
@@ -48,61 +57,32 @@ export async function lookupInviteCode(
 ): Promise<LookupInviteResult> {
 	const upperCode = code.trim().toUpperCase();
 
-	// Read the invite and household in one query via a join.
-	const { data, error } = await client
-		.from('household_invites')
-		.select(
-			`
-			id,
-			code,
-			expires_at,
-			used_at,
-			revoked_at,
-			households (
-				id,
-				name,
-				created_by,
-				created_at
-			)
-		`
-		)
-		.eq('code', upperCode)
-		.single();
+	const { data, error } = await client.rpc('lookup_household_invite', { p_code: upperCode });
 
 	if (error || !data) {
+		const rawHint = error?.hint as string | undefined;
+		const knownHints: readonly InviteErrorHint[] = [
+			'invalid_code',
+			'already_used',
+			'expired',
+			'revoked',
+			'already_member'
+		];
+		const resolvedHint: InviteErrorHint | 'unknown' = knownHints.includes(
+			rawHint as InviteErrorHint
+		)
+			? (rawHint as InviteErrorHint)
+			: 'invalid_code';
 		const svcError: HouseholdServiceError = {
-			hint: 'invalid_code',
+			hint: resolvedHint,
 			message: 'That code is invalid, expired, or already used. Ask for a new code and try again.'
 		};
 		throw svcError;
 	}
 
-	if (data.used_at) {
-		const svcError: HouseholdServiceError = {
-			hint: 'already_used',
-			message: 'That code is invalid, expired, or already used. Ask for a new code and try again.'
-		};
-		throw svcError;
-	}
-
-	if (data.revoked_at) {
-		const svcError: HouseholdServiceError = {
-			hint: 'revoked',
-			message: 'That code is invalid, expired, or already used. Ask for a new code and try again.'
-		};
-		throw svcError;
-	}
-
-	if (new Date(data.expires_at) <= new Date()) {
-		const svcError: HouseholdServiceError = {
-			hint: 'expired',
-			message: 'That code is invalid, expired, or already used. Ask for a new code and try again.'
-		};
-		throw svcError;
-	}
-
-	const householdData = Array.isArray(data.households) ? data.households[0] : data.households;
-	if (!householdData) {
+	const lookupData = data as LookupInviteRpcRow | LookupInviteRpcRow[];
+	const lookup = Array.isArray(lookupData) ? lookupData[0] : lookupData;
+	if (!lookup) {
 		const svcError: HouseholdServiceError = {
 			hint: 'invalid_code',
 			message: 'That code is invalid, expired, or already used. Ask for a new code and try again.'
@@ -111,8 +91,13 @@ export async function lookupInviteCode(
 	}
 
 	return {
-		household: householdData as HouseholdRow,
-		invite: { code: data.code, expires_at: data.expires_at }
+		household: {
+			id: lookup.household_id,
+			name: lookup.household_name,
+			created_by: lookup.household_created_by,
+			created_at: lookup.household_created_at
+		},
+		invite: { code: lookup.code, expires_at: lookup.expires_at }
 	};
 }
 
