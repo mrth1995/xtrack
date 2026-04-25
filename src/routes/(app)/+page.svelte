@@ -104,10 +104,20 @@
 		<!-- Secondary: settings/invite link -->
 		<a
 			href="/settings/invite"
-			class="flex min-h-[44px] items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold transition-colors"
+			class="mb-3 flex min-h-[44px] items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold transition-colors"
 			style="border-color: var(--color-border, #E7DED0); color: var(--color-muted)"
 		>
 			Invite a member
 		</a>
+
+		<form method="POST" action="/logout">
+			<button
+				type="submit"
+				class="flex min-h-[44px] w-full items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold transition-colors"
+				style="border-color: var(--color-border, #E7DED0); color: var(--color-muted); background: transparent"
+			>
+				Log out
+			</button>
+		</form>
 	</div>
 </main>

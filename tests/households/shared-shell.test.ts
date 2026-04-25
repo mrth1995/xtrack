@@ -11,6 +11,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
 	shouldShowInstallGuidance,
 	isSafariBrowser,
@@ -329,5 +331,20 @@ describe('Banner copy — locked instruction text', () => {
 		// Any change to this copy must be intentional and reviewed.
 		const bannerCopy = 'Tap Share, then Add to Home Screen';
 		expect(bannerCopy).toBe('Tap Share, then Add to Home Screen');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Signed-in shell — logout control
+// ---------------------------------------------------------------------------
+
+describe('Signed-in shell — logout control', () => {
+	it('renders a visible POST logout control in the signed-in home shell', () => {
+		const shellSource = readFileSync(resolve('src/routes/(app)/+page.svelte'), 'utf8');
+
+		expect(shellSource).toContain('method="POST"');
+		expect(shellSource).toContain('action="/logout"');
+		expect(shellSource).toContain('type="submit"');
+		expect(shellSource).toContain('Log out');
 	});
 });
