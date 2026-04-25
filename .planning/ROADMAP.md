@@ -12,7 +12,7 @@ xtrack v1.0 ships as a mobile-installable PWA for Indonesian households to track
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Auth, household model, DB schema, RLS, INFRA keep-alive, and iOS install guidance
+- [x] **Phase 1: Foundation** - Auth, household model, DB schema, RLS, INFRA keep-alive, and iOS install guidance
 - [ ] **Phase 2: Quick Add** - Core write path: numpad, categories, expense list, edit/delete, notes, IDR formatting
 - [ ] **Phase 3: Offline Tolerance** - IndexedDB queue, sync flush, IN_FLIGHT recovery, idempotent server inserts
 - [ ] **Phase 4: PWA + Realtime** - Service worker, web app manifest, full PWA install, Supabase Realtime household sync
@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can create a household; a second user can join it by entering the invite code
   4. Both household members see the same expense stream (verified by joining household, not just by creating one)
   5. First Safari visit shows an "Add to Home Screen" install guidance banner; Supabase keep-alive cron is configured
-**Plans**: TBD
+**Plans**: 7/7 complete
 **UI hint**: yes
 
 ### Phase 2: Quick Add
@@ -102,7 +102,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 7/7 | Complete | 2026-04-25 |
 | 2. Quick Add | 0/TBD | Not started | - |
 | 3. Offline Tolerance | 0/TBD | Not started | - |
 | 4. PWA + Realtime | 0/TBD | Not started | - |
