@@ -26,6 +26,18 @@ interface LookupInviteRpcRow {
 	expires_at: string;
 }
 
+const KNOWN_INVITE_HINTS: readonly InviteErrorHint[] = [
+	'invalid_code',
+	'already_used',
+	'expired',
+	'revoked',
+	'already_member'
+];
+
+function isKnownInviteHint(hint: string | undefined): hint is InviteErrorHint {
+	return KNOWN_INVITE_HINTS.includes(hint as InviteErrorHint);
+}
+
 // ── Service methods ───────────────────────────────────────────────────────────
 
 /**
@@ -59,23 +71,17 @@ export async function lookupInviteCode(
 
 	const { data, error } = await client.rpc('lookup_household_invite', { p_code: upperCode });
 
-	if (error || !data) {
+	if (error) {
 		const rawHint = error?.hint as string | undefined;
-		const knownHints: readonly InviteErrorHint[] = [
-			'invalid_code',
-			'already_used',
-			'expired',
-			'revoked',
-			'already_member'
-		];
-		const resolvedHint: InviteErrorHint | 'unknown' = knownHints.includes(
-			rawHint as InviteErrorHint
-		)
-			? (rawHint as InviteErrorHint)
-			: 'invalid_code';
+		const resolvedHint: InviteErrorHint | 'unknown' = isKnownInviteHint(rawHint)
+			? rawHint
+			: 'unknown';
 		const svcError: HouseholdServiceError = {
 			hint: resolvedHint,
-			message: 'That code is invalid, expired, or already used. Ask for a new code and try again.'
+			message:
+				resolvedHint === 'unknown'
+					? 'Invite lookup is not available. Apply the latest Supabase migrations, then restart the app and try again.'
+					: 'That code is invalid, expired, or already used. Ask for a new code and try again.'
 		};
 		throw svcError;
 	}
@@ -119,17 +125,8 @@ export async function acceptHouseholdInvite(
 
 	if (error) {
 		const rawHint = error.hint as string | undefined;
-		const knownHints: readonly InviteErrorHint[] = [
-			'invalid_code',
-			'already_used',
-			'expired',
-			'revoked',
-			'already_member'
-		];
-		const resolvedHint: InviteErrorHint | 'unknown' = knownHints.includes(
-			rawHint as InviteErrorHint
-		)
-			? (rawHint as InviteErrorHint)
+		const resolvedHint: InviteErrorHint | 'unknown' = isKnownInviteHint(rawHint)
+			? rawHint
 			: 'unknown';
 		const svcError: HouseholdServiceError = {
 			hint: resolvedHint,

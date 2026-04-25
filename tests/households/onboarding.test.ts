@@ -265,6 +265,25 @@ describe('lookupInviteCode service', () => {
 			hint: 'revoked'
 		});
 	});
+
+	it('throws setup-oriented error for unknown lookup RPC errors', async () => {
+		const { lookupInviteCode } = await import('$lib/server/households/service');
+
+		const mockClient = {
+			rpc: vi.fn().mockResolvedValue({
+				data: null,
+				error: {
+					message: 'Could not find the function public.lookup_household_invite',
+					code: 'PGRST202'
+				}
+			})
+		};
+
+		await expect(lookupInviteCode(mockClient as never, 'ABCD1234')).rejects.toMatchObject({
+			hint: 'unknown',
+			message: expect.stringMatching(/latest Supabase migrations/i)
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
