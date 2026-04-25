@@ -1,5 +1,5 @@
 ---
-status: testing
+status: partial
 phase: 01-foundation
 source:
   - .planning/phases/01-foundation/01-01-SUMMARY.md
@@ -9,16 +9,12 @@ source:
   - .planning/phases/01-foundation/01-05-SUMMARY.md
   - .planning/phases/01-foundation/01-06-SUMMARY.md
 started: 2026-04-25T15:48:39Z
-updated: 2026-04-25T15:48:39Z
+updated: 2026-04-26T06:17:25+07:00
 ---
 
 ## Current Test
 
-number: 3
-name: Auth Guard Redirect
-expected: |
-  While signed out, opening the app root or another protected app route should redirect to /auth instead of showing protected content or an error page.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -36,48 +32,56 @@ severity: blocker
 
 ### 3. Auth Guard Redirect
 expected: While signed out, opening the app root or another protected app route should redirect to /auth instead of showing protected content or an error page.
-result: [pending]
+result: pass
 
 ### 4. Email Sign-Up
 expected: On /auth, switching to sign-up with a valid email and password should create the account and continue into the authenticated flow without a crash.
-result: [pending]
+result: pass
 
 ### 5. Email Sign-In and Logout
 expected: An existing account should be able to sign in from /auth, reach the signed-in app, and then log out back to /auth cleanly.
-result: [pending]
+result: issue
+reported: "no logout button"
+severity: major
 
 ### 6. Create Household Onboarding
 expected: A signed-in user without a household should land on onboarding, be able to create a household with only a name, and then land in the signed-in shell.
-result: [pending]
+result: pass
 
 ### 7. Join Household by Invite
 expected: Entering a valid invite code should show a confirmation step with the household name, and confirming should join that household. Invalid or expired codes should stay on the same screen with an inline error.
-result: [pending]
+result: issue
+reported: "cannot join household, always shows \"That code is invalid, expired, or already used. Ask for a new code and try again\" even when code is valid"
+severity: major
 
 ### 8. Invite Management Reuse
 expected: From household settings, invite management should show an active invite code and reuse the existing valid code instead of replacing it with a different one.
-result: [pending]
+result: issue
+reported: "it doesn't reuse existing valid code, always replacing"
+severity: major
 
 ### 9. Household Shell and Details
 expected: The signed-in home should show household-scoped content with a clear path to View household details, and the household details page should list Members.
-result: [pending]
+result: blocked
+blocked_by: prior-phase
+reason: "cannot be tested because cannot invite member"
 
 ### 10. Safari Install Guidance
 expected: In Safari browser context, install guidance should appear with Tap Share, then Add to Home Screen, be snoozable, and stay hidden in standalone mode.
-result: [pending]
+result: pass
 
 ### 11. Supabase Keep-Alive Setup
 expected: The repo should include the scheduled keep-alive workflow and ops runbook, and after adding SUPABASE_KEEPALIVE_URL as a GitHub Actions secret the workflow should be manually runnable without embedding credentials in the repo.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 11
-passed: 0
-issues: 2
-pending: 9
+passed: 5
+issues: 5
+pending: 0
 skipped: 0
-blocked: 0
+blocked: 1
 
 ## Gaps
 
@@ -93,5 +97,26 @@ blocked: 0
   reason: "User reported: I got error [TypeError: fetch failed] { [cause]: Error: getaddrinfo ENOTFOUND placeholder.supabase.co } in my error logs"
   severity: blocker
   test: 2
+  artifacts: []
+  missing: []
+- truth: "An existing account should be able to sign in from /auth, reach the signed-in app, and then log out back to /auth cleanly."
+  status: failed
+  reason: "User reported: no logout button"
+  severity: major
+  test: 5
+  artifacts: []
+  missing: []
+- truth: "Entering a valid invite code should show a confirmation step with the household name, and confirming should join that household. Invalid or expired codes should stay on the same screen with an inline error."
+  status: failed
+  reason: "User reported: cannot join household, always shows \"That code is invalid, expired, or already used. Ask for a new code and try again\" even when code is valid"
+  severity: major
+  test: 7
+  artifacts: []
+  missing: []
+- truth: "From household settings, invite management should show an active invite code and reuse the existing valid code instead of replacing it with a different one."
+  status: failed
+  reason: "User reported: it doesn't reuse existing valid code, always replacing"
+  severity: major
+  test: 8
   artifacts: []
   missing: []
