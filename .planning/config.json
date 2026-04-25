@@ -22,15 +22,19 @@
     "node_repair_budget": 2,
     "ui_phase": true,
     "ui_safety_gate": true,
-    "text_mode": false,
+    "text_mode": true,
     "research_before_questions": false,
     "discuss_mode": "discuss",
     "skip_discuss": false,
     "code_review": true,
-    "code_review_depth": "standard"
+    "code_review_depth": "standard",
+    "_auto_chain_active": false,
+    "ai_integration_phase": true,
+    "use_worktrees": true
   },
   "hooks": {
-    "context_warnings": true
+    "context_warnings": true,
+    "workflow_guard": true
   },
   "project_code": null,
   "phase_naming": "sequential",
