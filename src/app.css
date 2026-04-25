@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/*
+  xtrack design tokens — sourced from Phase 1 UI-SPEC.md
+  60/30/10 colour rule:
+    Dominant (60%): #F7F3EB — app background, auth surfaces
+    Secondary (30%): #E7DED0 — cards, segmented control track, banner shell
+    Accent (10%): #176B5D — primary submit, active segment, copy action, success badge
+    Destructive: #B9382F — inline destructive text only
+*/
+
+:root {
+  --color-bg: #F7F3EB;
+  --color-surface: #E7DED0;
+  --color-accent: #176B5D;
+  --color-accent-foreground: #FFFFFF;
+  --color-destructive: #B9382F;
+  --color-destructive-foreground: #FFFFFF;
+  --color-foreground: #1A1A1A;
+  --color-muted: #6B6560;
+
+  /* Spacing scale (multiples of 4px) */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+
+  /* Minimum tap target */
+  --tap-min: 44px;
+  --button-height: 48px;
+}
+
+html,
+body {
+  background-color: var(--color-bg);
+  color: var(--color-foreground);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Prevent pull-to-refresh and iOS overscroll bounce in standalone mode */
+body {
+  overscroll-behavior: none;
+}
