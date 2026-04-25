@@ -128,14 +128,48 @@
 
 <!-- Filled by roadmapper — maps REQ-IDs to phases -->
 
-| Requirement | Phase |
-|-------------|-------|
-| AUTH-01–04 | — |
-| HOUSE-01–04 | — |
-| INFRA-01 | — |
-| PWA-01–04 | — |
-| INPUT-01–14 | — |
-| SYNC-01–02 | — |
-| REPORT-01–06 | — |
-| SCAN-01–05 | — |
-| TMPL-01–03 | — |
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| HOUSE-01 | Phase 1 | Pending |
+| HOUSE-02 | Phase 1 | Pending |
+| HOUSE-03 | Phase 1 | Pending |
+| HOUSE-04 | Phase 1 | Pending |
+| INFRA-01 | Phase 1 | Pending |
+| PWA-02 | Phase 1 | Pending |
+| INPUT-01 | Phase 2 | Pending |
+| INPUT-02 | Phase 2 | Pending |
+| INPUT-03 | Phase 2 | Pending |
+| INPUT-04 | Phase 2 | Pending |
+| INPUT-05 | Phase 2 | Pending |
+| INPUT-06 | Phase 2 | Pending |
+| INPUT-07 | Phase 2 | Pending |
+| INPUT-12 | Phase 2 | Pending |
+| INPUT-13 | Phase 2 | Pending |
+| INPUT-14 | Phase 2 | Pending |
+| INPUT-08 | Phase 3 | Pending |
+| INPUT-09 | Phase 3 | Pending |
+| INPUT-10 | Phase 3 | Pending |
+| INPUT-11 | Phase 3 | Pending |
+| PWA-01 | Phase 4 | Pending |
+| PWA-03 | Phase 4 | Pending |
+| PWA-04 | Phase 4 | Pending |
+| SYNC-01 | Phase 4 | Pending |
+| SYNC-02 | Phase 4 | Pending |
+| REPORT-01 | Phase 5 | Pending |
+| REPORT-02 | Phase 5 | Pending |
+| REPORT-03 | Phase 5 | Pending |
+| REPORT-04 | Phase 5 | Pending |
+| REPORT-05 | Phase 5 | Pending |
+| REPORT-06 | Phase 5 | Pending |
+| SCAN-01 | Phase 6 | Pending |
+| SCAN-02 | Phase 6 | Pending |
+| SCAN-03 | Phase 6 | Pending |
+| SCAN-04 | Phase 6 | Pending |
+| SCAN-05 | Phase 6 | Pending |
+| TMPL-01 | Phase 6 | Pending |
+| TMPL-02 | Phase 6 | Pending |
+| TMPL-03 | Phase 6 | Pending |
