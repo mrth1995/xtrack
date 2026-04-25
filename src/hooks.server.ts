@@ -1,31 +1,27 @@
 import type { Handle } from '@sveltejs/kit';
-import { createServerSupabaseClient } from '$lib/supabase/server';
+import { redirect } from '@sveltejs/kit';
+import { createServerClient } from '$lib/supabase/server';
 
 /**
- * Server hook: initialises request-scoped locals for every request.
+ * Global server hook.
  *
- * Sets:
- *   event.locals.supabase   — request-scoped Supabase client (anon key)
- *   event.locals.session    — current auth session or null
- *   event.locals.householdId — household ID for the authenticated user or null
- *
- * Route-level redirects (auth guard, household guard) are handled in each
- * route's +page.server.ts / +layout.server.ts load function.
+ * Responsibilities:
+ * 1. Create a request-scoped Supabase client and restore the session from cookies.
+ * 2. Attach `user`, `session`, and `householdId` to `event.locals`.
+ * 3. Guard all `(app)` routes: redirect unauthenticated requests to `/auth`.
  */
 export const handle: Handle = async ({ event, resolve }) => {
-	const supabase = createServerSupabaseClient();
-	event.locals.supabase = supabase;
-	event.locals.session = null;
-	event.locals.householdId = null;
+	const supabase = createServerClient(event);
 
-	// Attempt to restore session from cookies
 	const {
 		data: { session }
 	} = await supabase.auth.getSession();
 
-	if (session) {
-		event.locals.session = session;
+	event.locals.session = session;
+	event.locals.user = session?.user ?? null;
+	event.locals.householdId = null;
 
+	if (session) {
 		// Look up the user's household membership (v1: one household per user)
 		const { data: membership } = await supabase
 			.from('household_members')
@@ -37,6 +33,21 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (membership?.household_id) {
 			event.locals.householdId = membership.household_id;
 		}
+	}
+
+	const path = event.url.pathname;
+
+	const isPublicPath =
+		path === '/auth' ||
+		path.startsWith('/auth') ||
+		path === '/logout' ||
+		path.startsWith('/logout') ||
+		path.startsWith('/_app') ||
+		path.startsWith('/favicon') ||
+		path.startsWith('/manifest');
+
+	if (!isPublicPath && !event.locals.user) {
+		throw redirect(303, '/auth');
 	}
 
 	return resolve(event);

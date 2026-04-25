@@ -1,21 +1,27 @@
 import { createClient } from '@supabase/supabase-js';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import type { Database } from '$lib/types/database';
+import type { RequestEvent } from '@sveltejs/kit';
 
 /**
- * Creates a request-scoped Supabase client for server-side usage.
- * Called from hooks.server.ts or server load functions.
- * Uses the public anon key — row-level security handles access control.
+ * Create a request-scoped Supabase client for server-side code (hooks, load
+ * functions, server actions).
  *
- * SECURITY: SUPABASE_SERVICE_ROLE_KEY must never be used here.
- * Service-role bypass is only allowed in trusted GitHub Actions contexts.
+ * Forwards the request Cookie header so Supabase can restore the session from
+ * HttpOnly cookies. Uses the anon key only — the service-role key must never
+ * appear here.
  */
-export function createServerSupabaseClient(): SupabaseClient {
-	return createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+export function createServerClient(event: RequestEvent) {
+	return createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
 		auth: {
 			persistSession: false,
 			autoRefreshToken: false,
 			detectSessionInUrl: false
+		},
+		global: {
+			headers: {
+				Cookie: event.request.headers.get('cookie') ?? ''
+			}
 		}
 	});
 }
