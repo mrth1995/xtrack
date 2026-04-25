@@ -10,8 +10,12 @@ export default defineConfig({
 		// which points to index-server.js, causing mount() to fail in jsdom.
 		conditions: ['browser'],
 		alias: {
+<<<<<<< HEAD
 			// Mirror the $lib alias that SvelteKit injects at dev/build time.
 			// Required for unit tests that import $lib/* directly.
+=======
+			// Resolve SvelteKit path aliases for test files
+>>>>>>> worktree-agent-a7f00084972a30c75
 			$lib: path.resolve('./src/lib')
 		}
 	},
