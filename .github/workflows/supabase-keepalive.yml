@@ -1,0 +1,29 @@
+name: Supabase Keep-Alive
+
+# Runs twice a week (Tuesday and Friday at 08:00 UTC) to prevent the
+# Supabase free-tier project from pausing due to inactivity.
+# Supabase pauses free-tier projects after 7 days of inactivity.
+# Running every 3-4 days provides comfortable margin.
+on:
+  schedule:
+    - cron: "0 8 * * 2,5"
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  keepalive:
+    name: Ping Supabase
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run keep-alive script
+        env:
+          SUPABASE_KEEPALIVE_URL: ${{ secrets.SUPABASE_KEEPALIVE_URL }}
+        run: node scripts/supabase-keepalive.mjs
