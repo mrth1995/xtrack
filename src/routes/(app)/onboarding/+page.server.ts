@@ -9,12 +9,12 @@ import { redirect } from '@sveltejs/kit';
 export const load: PageServerLoad = async ({ locals }) => {
 	// If user is not authenticated, redirect to auth
 	if (!locals.session) {
-		redirect(303, '/auth');
+		throw redirect(303, '/auth');
 	}
 
 	// If user already has a household, redirect to app shell
 	if (locals.householdId) {
-		redirect(303, '/');
+		throw redirect(303, '/');
 	}
 
 	return {};

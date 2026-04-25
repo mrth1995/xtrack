@@ -18,21 +18,25 @@ export const handle: Handle = async ({ event, resolve }) => {
 	} = await supabase.auth.getSession();
 
 	event.locals.session = session;
-	event.locals.user = session?.user ?? null;
+	event.locals.user = null;
 	event.locals.householdId = null;
 
 	if (session) {
-		// Look up the user's household membership (v1: one household per user)
-		const { data } = await supabase
-			.from('household_members')
-			.select('household_id')
-			.eq('user_id', session.user.id)
-			.limit(1)
-			.maybeSingle();
-		const membership = data as { household_id: string } | null;
+		const {
+			data: { user }
+		} = await supabase.auth.getUser();
 
-		if (membership?.household_id) {
-			event.locals.householdId = membership.household_id;
+		event.locals.user = user;
+	}
+
+	if (event.locals.user) {
+		// Resolve the user's household through the SECURITY DEFINER helper.
+		// This avoids depending on direct household_members reads during the
+		// first request after onboarding actions.
+		const { data, error } = await supabase.rpc('current_household_id');
+
+		if (!error && data) {
+			event.locals.householdId = data as string;
 		}
 	}
 

@@ -13,12 +13,12 @@ import { createServerClient } from '$lib/supabase/server';
 export const load: PageServerLoad = async (event) => {
 	const { locals } = event;
 	if (!locals.session) {
-		redirect(303, '/auth');
+		throw redirect(303, '/auth');
 	}
 
 	const householdId = locals.householdId;
 	if (!householdId) {
-		redirect(303, '/onboarding');
+		throw redirect(303, '/onboarding');
 	}
 
 	const supabase = createServerClient(event);

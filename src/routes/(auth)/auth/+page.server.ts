@@ -6,13 +6,30 @@ import { validateAuthForm } from '$lib/auth/schemas';
 /**
  * Auth page load function.
  *
+ * Handles SSR auth callback completion for PKCE redirects (`?code=...`) before
+ * rendering the page. Redirect already-authenticated users directly to the app
+ * so they do not see the auth screen unnecessarily.
+ *
  * Redirect already-authenticated users directly to the app so they do not see
  * the auth screen unnecessarily.
  */
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async (event) => {
+	const { locals, url } = event;
+	const code = url.searchParams.get('code');
+
+	if (code) {
+		const supabase = createServerClient(event);
+		const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+		if (!error) {
+			throw redirect(303, '/');
+		}
+	}
+
 	if (locals.user) {
 		throw redirect(303, '/');
 	}
+
 	return {};
 };
 
@@ -64,7 +81,16 @@ export const actions: Actions = {
 		}
 
 		const supabase = createServerClient(event);
-		const { error } = await supabase.auth.signUp({ email, password });
+		const { data, error } = await supabase.auth.signUp({
+			email,
+			password,
+			options: {
+				// Hosted Supabase projects default to Site URL when no redirect is
+				// provided, which is often still localhost:3000. Use the current
+				// request origin instead so confirmation emails return to this app.
+				emailRedirectTo: new URL('/auth', event.url).toString()
+			}
+		});
 
 		if (error) {
 			return fail(400, {
@@ -76,7 +102,21 @@ export const actions: Actions = {
 			});
 		}
 
-		// Session is available immediately — continue into the app.
+		// Hosted Supabase projects usually require email confirmation. In that
+		// case signUp returns a user but no session, so keep the user on /auth
+		// and tell them to finish confirmation instead of redirecting into the
+		// protected app unauthenticated.
+		if (!data.session) {
+			return {
+				mode: 'signup' as const,
+				email,
+				success:
+					'Check your email to confirm your account, then come back here to log in.'
+			};
+		}
+
+		// Local dev with email confirmation disabled returns a session
+		// immediately, so continue into the app.
 		throw redirect(303, '/');
 	}
 };

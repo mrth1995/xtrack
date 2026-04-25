@@ -12,7 +12,8 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.47.10",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.104.1",
     "lucide-svelte": "^0.477.0",
     "zod": "^4.3.6"
   },

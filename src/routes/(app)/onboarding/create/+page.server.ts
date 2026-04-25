@@ -6,10 +6,10 @@ import { createServerClient } from '$lib/supabase/server';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.session) {
-		redirect(303, '/auth');
+		throw redirect(303, '/auth');
 	}
 	if (locals.householdId) {
-		redirect(303, '/');
+		throw redirect(303, '/');
 	}
 	return {};
 };
@@ -18,7 +18,7 @@ export const actions: Actions = {
 	default: async (event) => {
 		const { request, locals } = event;
 		if (!locals.session) {
-			redirect(303, '/auth');
+			throw redirect(303, '/auth');
 		}
 
 		const formData = await request.formData();
@@ -44,6 +44,6 @@ export const actions: Actions = {
 			});
 		}
 
-		redirect(303, '/');
+		throw redirect(303, '/');
 	}
 };

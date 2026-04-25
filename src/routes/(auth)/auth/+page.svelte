@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import type { ActionData } from './$types';
 
 	interface Props {
@@ -28,6 +30,80 @@
 
 	const errors = $derived((form as { errors?: Record<string, string> } | null)?.errors ?? {});
 	const prefillEmail = $derived((form as { email?: string } | null)?.email ?? '');
+	const success = $derived((form as { success?: string } | null)?.success ?? '');
+	let authRedirectPending = $state(false);
+	let authRedirectError = $state('');
+
+	onMount(() => {
+		const hash = window.location.hash.startsWith('#')
+			? window.location.hash.slice(1)
+			: window.location.hash;
+		const params = new URLSearchParams(hash);
+		const hasAuthRedirect =
+			params.has('access_token') ||
+			params.has('refresh_token') ||
+			params.has('error') ||
+			params.has('error_description');
+
+		if (!hasAuthRedirect) {
+			return;
+		}
+
+		authRedirectPending = true;
+
+		const clearHash = () => {
+			history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+		};
+
+		const finishRedirect = async () => {
+			const { supabase } = await import('$lib/supabase/client');
+			const errorDescription = params.get('error_description');
+			if (errorDescription) {
+				authRedirectError = errorDescription;
+				authRedirectPending = false;
+				clearHash();
+				return;
+			}
+
+			const {
+				data: { session }
+			} = await supabase.auth.getSession();
+
+			if (session) {
+				clearHash();
+				await goto('/', { replaceState: true, invalidateAll: true });
+				return;
+			}
+
+			authRedirectError = 'Email confirmation finished, but the session was not restored. Please log in manually.';
+			authRedirectPending = false;
+			clearHash();
+		};
+
+		let unsubscribe = () => {};
+
+		void (async () => {
+			const { supabase } = await import('$lib/supabase/client');
+			const {
+				data: { subscription }
+			} = supabase.auth.onAuthStateChange((_event, session) => {
+				if (session) {
+					clearHash();
+					void goto('/', { replaceState: true, invalidateAll: true });
+				}
+			});
+
+			unsubscribe = () => {
+				subscription.unsubscribe();
+			};
+
+			await finishRedirect();
+		})();
+
+		return () => {
+			unsubscribe();
+		};
+	});
 </script>
 
 <svelte:head>
@@ -99,6 +175,39 @@
 			class="flex flex-col gap-4"
 			novalidate
 		>
+			{#if authRedirectPending}
+				<p
+					class="rounded-lg px-4 py-3 text-sm font-medium"
+					style="background-color: #DBEAFE; color: #1D4ED8;"
+					role="status"
+					aria-live="polite"
+				>
+					Finishing email confirmation...
+				</p>
+			{/if}
+
+			{#if authRedirectError}
+				<p
+					class="rounded-lg px-4 py-3 text-sm font-medium"
+					style="background-color: #FEE2E2; color: var(--color-destructive);"
+					role="alert"
+					aria-live="polite"
+				>
+					{authRedirectError}
+				</p>
+			{/if}
+
+			{#if success}
+				<p
+					class="rounded-lg px-4 py-3 text-sm font-medium"
+					style="background-color: #DCFCE7; color: #166534;"
+					role="status"
+					aria-live="polite"
+				>
+					{success}
+				</p>
+			{/if}
+
 			<!-- Form-level error (D-18) -->
 			{#if errors.form}
 				<p
