@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { joinHouseholdSchema } from '$lib/households/schemas';
 import { lookupInviteCode, acceptHouseholdInvite } from '$lib/server/households/service';
 import type { HouseholdServiceError } from '$lib/server/households/service';
+import { createServerClient } from '$lib/supabase/server';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.session) {
@@ -19,8 +20,9 @@ export const actions: Actions = {
 	 * Lookup action: validates and looks up the invite code to show household
 	 * name confirmation. Does not join the household yet.
 	 */
-	lookupInvite: async ({ request, locals }) => {
-		if (!locals.session || !locals.supabase) {
+	lookupInvite: async (event) => {
+		const { request, locals } = event;
+		if (!locals.session) {
 			redirect(303, '/auth');
 		}
 
@@ -36,8 +38,9 @@ export const actions: Actions = {
 			});
 		}
 
+		const supabase = createServerClient(event);
 		try {
-			const result = await lookupInviteCode(locals.supabase, parsed.data.code);
+			const result = await lookupInviteCode(supabase, parsed.data.code);
 			// Show confirmation step with household name per D-08
 			return {
 				step: 'confirm' as const,
@@ -60,8 +63,9 @@ export const actions: Actions = {
 	 * Join action: accepts the confirmed invite code and joins the household.
 	 * Only called after the user has seen the confirmation step.
 	 */
-	join: async ({ request, locals }) => {
-		if (!locals.session || !locals.supabase) {
+	join: async (event) => {
+		const { request, locals } = event;
+		if (!locals.session) {
 			redirect(303, '/auth');
 		}
 
@@ -77,8 +81,9 @@ export const actions: Actions = {
 			});
 		}
 
+		const supabase = createServerClient(event);
 		try {
-			await acceptHouseholdInvite(locals.supabase, parsed.data.code);
+			await acceptHouseholdInvite(supabase, parsed.data.code);
 		} catch (err: unknown) {
 			const svcError = err as HouseholdServiceError;
 			return fail(400, {

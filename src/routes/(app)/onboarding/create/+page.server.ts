@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createHouseholdSchema } from '$lib/households/schemas';
 import { createHousehold } from '$lib/server/households/service';
+import { createServerClient } from '$lib/supabase/server';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.session) {
@@ -14,8 +15,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals }) => {
-		if (!locals.session || !locals.supabase) {
+	default: async (event) => {
+		const { request, locals } = event;
+		if (!locals.session) {
 			redirect(303, '/auth');
 		}
 
@@ -31,8 +33,9 @@ export const actions: Actions = {
 			});
 		}
 
+		const supabase = createServerClient(event);
 		try {
-			await createHousehold(locals.supabase, parsed.data.name);
+			await createHousehold(supabase, parsed.data.name);
 		} catch (err: unknown) {
 			const message = err instanceof Error ? err.message : 'Failed to create household';
 			return fail(500, {

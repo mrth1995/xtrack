@@ -23,12 +23,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	if (session) {
 		// Look up the user's household membership (v1: one household per user)
-		const { data: membership } = await supabase
+		const { data } = await supabase
 			.from('household_members')
 			.select('household_id')
 			.eq('user_id', session.user.id)
 			.limit(1)
 			.maybeSingle();
+		const membership = data as { household_id: string } | null;
 
 		if (membership?.household_id) {
 			event.locals.householdId = membership.household_id;

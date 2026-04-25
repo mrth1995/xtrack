@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getOrCreateActiveInviteCode } from '$lib/server/households/service';
+import { createServerClient } from '$lib/supabase/server';
 
 /**
  * Invite management page load function.
@@ -9,7 +10,8 @@ import { getOrCreateActiveInviteCode } from '$lib/server/households/service';
  * Implements D-22 through D-27: show current active code if valid,
  * auto-generate only when expired/used, show joined status after use.
  */
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async (event) => {
+	const { locals } = event;
 	if (!locals.session) {
 		redirect(303, '/auth');
 	}
@@ -19,8 +21,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 		redirect(303, '/onboarding');
 	}
 
+	const supabase = createServerClient(event);
 	try {
-		const invite = await getOrCreateActiveInviteCode(locals.supabase!, householdId);
+		const invite = await getOrCreateActiveInviteCode(supabase, householdId);
 
 		// Determine if the invite has been used (joined state)
 		const isUsed = invite.used_at !== null;
