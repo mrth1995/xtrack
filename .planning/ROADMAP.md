@@ -31,7 +31,18 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can create a household; a second user can join it by entering the invite code
   4. Both household members see the same expense stream (verified by joining household, not just by creating one)
   5. First Safari visit shows an "Add to Home Screen" install guidance banner; Supabase keep-alive cron is configured
-**Plans**: 7/7 complete
+**Plans**: 10 plans (7 complete, 3 gap-closure)
+Plans:
+- [x] 01-01-PLAN.md — Scaffold app, tooling, and Supabase baseline
+- [x] 01-02-PLAN.md — Create Phase 1 schema, SQL helpers, and RLS
+- [x] 01-03-PLAN.md — Implement auth and session handling
+- [x] 01-04-PLAN.md — Implement household create/join/invite flows
+- [x] 01-05-PLAN.md — Implement signed-in shell, household details, and install guidance
+- [x] 01-06-PLAN.md — Add Supabase keep-alive automation
+- [x] 01-07-PLAN.md — Fix invite lookup and active invite reuse gaps found during UAT
+- [ ] 01-08-PLAN.md — Close app runtime gaps for AUTH-04, env validation, loader errors, and logout
+- [ ] 01-09-PLAN.md — Close RLS and invite RPC security gaps
+- [ ] 01-10-PLAN.md — Push Supabase schema and record two-user shared-stream verification
 **UI hint**: yes
 
 ### Phase 2: Quick Add
