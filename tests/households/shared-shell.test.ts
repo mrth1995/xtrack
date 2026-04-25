@@ -263,7 +263,7 @@ describe('Shell loader — household-scoped shared data', () => {
 		// 1. Fetch household by householdId
 		const { data: householdData } = await mockClient
 			.from('households')
-			// @ts-expect-error mock chain
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			.select('id, name, created_by, created_at')
 			.eq('id', HOUSEHOLD_ID)
 			.single();
@@ -271,7 +271,7 @@ describe('Shell loader — household-scoped shared data', () => {
 		// 2. Fetch expenses scoped to household_id (shared-data proof)
 		const { data: expensesData } = await mockClient
 			.from('expenses')
-			// @ts-expect-error mock chain
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			.select('id, amount, category, note, spent_at, created_by')
 			.eq('household_id', HOUSEHOLD_ID)
 			.eq('is_deleted', false)
@@ -313,8 +313,8 @@ describe('Shell loader — household-scoped shared data', () => {
 			})
 		};
 
-		// @ts-expect-error mock
-		const { data } = await mockClient.from('households').select('*').eq('id', householdId).single();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { data } = await (mockClient as any).from('households').select('*').eq('id', householdId).single();
 		expect((data as typeof mockHousehold).name).toBe(householdName);
 	});
 });
