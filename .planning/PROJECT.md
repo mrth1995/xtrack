@@ -1,5 +1,19 @@
 # xtrack
 
+## Current Milestone: v1.0 MVP Launch
+
+**Goal:** Ship a fully-functional personal expense tracker PWA for Indonesian households — fast logging, shared view, and cycle-based spending reports.
+
+**Target features:**
+- PWA install (iOS-first, Android second — "Add to Home Screen" via Safari)
+- Cloud auth + shared household (invite via link/code)
+- Manual quick-add (numpad → category tiles, 2-3 taps) — Quick Add is the default/home screen
+- Receipt scan (free-tier AI/OCR, manual fallback)
+- Fixed preset categories (IDR formatting throughout)
+- Payday cycle + category breakdown report (pie/donut)
+- Saved expense templates
+- Edit / delete expenses + optional notes
+
 ## What This Is
 
 xtrack is a mobile-installable expense tracker (PWA) for Indonesian users who want to log spending fast and see where the money actually goes, one payday cycle at a time. Built personal-first for a household of two, designed so it can ship publicly to college students and young-adult families later.
@@ -20,7 +34,7 @@ Logging an expense must feel effortless — from the moment the user thinks "I j
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Installable PWA that works on Android (primary) with home-screen icon + app-shortcut menu (long-press → Quick add / Scan receipt / View report)
+- [ ] Installable PWA that works on iOS (primary) and Android (secondary) with home-screen icon via "Add to Home Screen"
 - [ ] Cloud account sign-in so data survives device changes and can be shared across devices
 - [ ] Shared household: one person creates a household, invites partner via link or short code; both see and add to the same expense stream
 - [ ] Manual quick-add (first-class): big amount numpad opens first, then a row of category tiles — two to three taps to save
@@ -37,7 +51,8 @@ Logging an expense must feel effortless — from the moment the user thinks "I j
 
 <!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
 
-- iOS native app — PWA on iOS works but home-screen shortcuts are Android-only; iOS polish is v2
+- Android app shortcuts (long-press shortcut menu) — manifest `shortcuts` API not supported on iOS; Quick Add is the default screen instead
+- iOS native app — PWA covers the iOS case; native app wrapper is a future consideration
 - Voice input — deferred; user picked receipt-first for AI-assisted input
 - Multi-currency — IDR only; multi-currency adds FX, formatting, and data-model complexity with no current user need
 - Budgets, goals, alerts — v1 is "track only"; budgeting is a future milestone
@@ -50,7 +65,7 @@ Logging an expense must feel effortless — from the moment the user thinks "I j
 ## Context
 
 - **Locale:** Indonesia. Currency is IDR, amounts are routinely 5–7 digits, and users think in "k" (thousand) and "jt" (million). Payment context includes Gojek, GrabFood, QRIS, e-wallets — informs example copy and receipt parsing expectations.
-- **Primary device:** Android smartphones. PWA install to home screen, long-press for app-shortcuts (Android-supported), offline-tolerant input.
+- **Primary device:** iOS smartphones (Safari "Add to Home Screen"). Android supported and degrades gracefully. No app-shortcuts — Quick Add is the default screen of the app. Offline-tolerant input.
 - **Household model:** Two users sharing one financial view. Not a multi-tenant SaaS concern yet, but data model must isolate household scope from day one so "invite a partner" isn't a rewrite later.
 - **Why receipt-scan matters:** Indonesian receipts are common for food/groceries. Parsing with free-tier LLM is good enough for amount extraction most of the time; the fallback-to-manual UX protects against the times it isn't.
 - **Prior work:** None — greenfield. No existing codebase, no accumulated tech debt.
@@ -71,7 +86,7 @@ Logging an expense must feel effortless — from the moment the user thinks "I j
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Personal-first, ship-later scope | Optimize for the builder's own use; ship-ability is a design constraint, not a v1 deliverable | — Pending |
-| PWA over native | One codebase, home-screen install covers the Android case; avoids app-store overhead for personal use | — Pending |
+| PWA over native (iOS-first) | One codebase, home-screen install via Safari covers the iOS case; Android second. Avoids app-store overhead. Flutter considered and rejected — app store cost + Dart overhead not worth it for personal use | — Pending |
 | Cloud account (not local-only) | Shared household needs a single source of truth between two devices | — Pending |
 | Shared household via invite code | Lets partners stay as separate identities while sharing one budget view (vs shared login which loses attribution) | — Pending |
 | Track-only in v1 (no budgets) | Keeps v1 small and proves the input-speed + visibility loop before layering goals | — Pending |
@@ -98,4 +113,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-23 after initialization*
+*Last updated: 2026-04-25 — Milestone v1.0 started, iOS-first pivot*
