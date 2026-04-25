@@ -6,25 +6,15 @@
 -- Requirements: HOUSE-01, HOUSE-02, HOUSE-03, HOUSE-04
 
 -- ---------------------------------------------------------------------------
--- Extensions
--- ---------------------------------------------------------------------------
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
-
--- ---------------------------------------------------------------------------
--- Helper: generate a short, URL-safe invite code (8 uppercase alphanum chars)
+-- Helper: generate a short invite code (8 uppercase hex chars)
+-- Uses gen_random_uuid() — no pgcrypto extension required.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.generate_invite_code()
 RETURNS text
 LANGUAGE sql
 VOLATILE
 AS $$
-  SELECT upper(
-    substring(
-      replace(replace(replace(encode(gen_random_bytes(6), 'base64'), '+', ''), '/', ''), '=', ''),
-      1, 8
-    )
-  );
+  SELECT upper(substring(replace(gen_random_uuid()::text, '-', ''), 1, 8));
 $$;
 
 
