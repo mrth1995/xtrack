@@ -2,6 +2,9 @@ import { createServerClient as createSsrServerClient } from '@supabase/ssr';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import type { Database } from '$lib/types/database';
 import type { RequestEvent } from '@sveltejs/kit';
+import { validateSupabasePublicEnv } from './env';
+
+const supabaseEnv = validateSupabasePublicEnv(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 
 /**
  * Create a request-scoped Supabase client for server-side code (hooks, load
@@ -12,7 +15,7 @@ import type { RequestEvent } from '@sveltejs/kit';
  * email confirmation redirects.
  */
 export function createServerClient(event: RequestEvent) {
-	return createSsrServerClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+	return createSsrServerClient<Database>(supabaseEnv.url, supabaseEnv.anonKey, {
 		cookies: {
 			getAll() {
 				return event.cookies.getAll();
