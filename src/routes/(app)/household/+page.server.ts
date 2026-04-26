@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { redirect } from '@sveltejs/kit';
+import { redirect, error } from '@sveltejs/kit';
 import { createServerClient } from '$lib/supabase/server';
 
 interface MemberWithProfile {
@@ -43,11 +43,15 @@ export const load: PageServerLoad = async (event) => {
 	const householdId = locals.householdId;
 
 	// Load household row — cast via unknown to avoid Supabase generic narrowing to never
-	const { data: householdRaw } = await supabase
+	const { data: householdRaw, error: householdError } = await supabase
 		.from('households')
 		.select('id, name, created_by, created_at')
 		.eq('id', householdId)
 		.single();
+
+	if (householdError) {
+		throw error(503, 'Could not load household details.');
+	}
 
 	const householdTyped = householdRaw as unknown as HouseholdDetail | null;
 	const household: HouseholdDetail | null = householdTyped
@@ -60,7 +64,7 @@ export const load: PageServerLoad = async (event) => {
 		: null;
 
 	// Load members with profile info
-	const { data: membersRaw } = await supabase
+	const { data: membersRaw, error: membersError } = await supabase
 		.from('household_members')
 		.select(
 			`
@@ -76,6 +80,10 @@ export const load: PageServerLoad = async (event) => {
 		)
 		.eq('household_id', householdId)
 		.order('joined_at', { ascending: true });
+
+	if (membersError) {
+		throw error(503, 'Could not load household members.');
+	}
 
 	const members: HouseholdMember[] = (
 		(membersRaw ?? []) as unknown as MemberWithProfile[]
