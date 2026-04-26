@@ -40,9 +40,9 @@ Plans:
 - [x] 01-05-PLAN.md — Implement signed-in shell, household details, and install guidance
 - [x] 01-06-PLAN.md — Add Supabase keep-alive automation
 - [x] 01-07-PLAN.md — Fix invite lookup and active invite reuse gaps found during UAT
-- [ ] 01-08-PLAN.md — Close app runtime gaps for AUTH-04, env validation, loader errors, and logout
-- [ ] 01-09-PLAN.md — Close RLS and invite RPC security gaps
-- [ ] 01-10-PLAN.md — Push Supabase schema and record two-user shared-stream verification
+- [x] 01-08-PLAN.md — Close app runtime gaps for AUTH-04, env validation, loader errors, and logout
+- [x] 01-09-PLAN.md — Close RLS and invite RPC security gaps
+- [x] 01-10-PLAN.md — Push Supabase schema and record two-user shared-stream verification
 **UI hint**: yes
 
 ### Phase 2: Quick Add
