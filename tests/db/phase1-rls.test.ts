@@ -201,6 +201,34 @@ describe('Phase 1 RLS — Cross-household denial', () => {
       await sc.auth.admin.deleteUser(userData.user.id);
     }
   });
+
+  it.skipIf(SKIP_INTEGRATION)('Outsider cannot read household_members for a foreign household', async () => {
+    const sc = serviceClient();
+    const timestamp = Date.now();
+    const outsiderEmail = `outsider3_${timestamp}@example.com`;
+
+    const { data: userData, error: createError } = await sc.auth.admin.createUser({
+      email: outsiderEmail,
+      password: 'password123',
+      email_confirm: true
+    });
+    expect(createError).toBeNull();
+
+    const outsiderClient = await signInAs(outsiderEmail);
+    const { data, error } = await outsiderClient
+      .from('household_members')
+      .select('id')
+      .eq('household_id', HOUSEHOLD_ID);
+
+    // RLS should return empty array, not an error, for denied rows
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+
+    // Cleanup
+    if (userData?.user) {
+      await sc.auth.admin.deleteUser(userData.user.id);
+    }
+  });
 });
 
 describe('Phase 1 — Invite lifecycle: accept_household_invite', () => {
@@ -335,6 +363,71 @@ describe('Phase 1 — Invite lifecycle: accept_household_invite', () => {
     // Cleanup
     const ids = [u1?.user?.id, u2?.user?.id].filter(Boolean) as string[];
     await Promise.all(ids.map((id) => sc.auth.admin.deleteUser(id)));
+  });
+});
+
+describe('Phase 1 — lookup_household_invite RPC', () => {
+  it.skipIf(SKIP_INTEGRATION)('lookup_household_invite returns household name for a valid fresh code', async () => {
+    const sc = serviceClient();
+    const timestamp = Date.now();
+    const newUserEmail = `lookup_test_${timestamp}@example.com`;
+
+    // Create a fresh non-member user
+    const { data: userData, error: createError } = await sc.auth.admin.createUser({
+      email: newUserEmail,
+      password: 'password123',
+      email_confirm: true
+    });
+    expect(createError).toBeNull();
+
+    // Create a fresh invite via service role so we control the code
+    const freshCode = `LKP${timestamp}`.slice(0, 8).toUpperCase();
+    await sc.from('household_invites').insert({
+      household_id: HOUSEHOLD_ID,
+      code: freshCode,
+      created_by: ALICE_ID,
+      expires_at: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString()
+    });
+
+    const newUserClient = await signInAs(newUserEmail);
+    const { data, error } = await newUserClient.rpc('lookup_household_invite', {
+      p_code: freshCode
+    });
+
+    expect(error).toBeNull();
+    expect(data).not.toBeNull();
+
+    const row = Array.isArray(data) ? data[0] : data;
+    expect(row).not.toBeNull();
+    expect(row?.household_name).toBe('Alice & Bob Household');
+
+    // Cleanup
+    if (userData?.user) {
+      await sc.auth.admin.deleteUser(userData.user.id);
+    }
+  });
+});
+
+describe('Phase 1 — get_or_create_active_household_invite RPC', () => {
+  it.skipIf(SKIP_INTEGRATION)('calling get_or_create_active_household_invite twice returns the same code', async () => {
+    const aliceClient = await signInAs('alice@example.com');
+
+    const { data: data1, error: err1 } = await aliceClient.rpc(
+      'get_or_create_active_household_invite',
+      { p_household_id: HOUSEHOLD_ID }
+    );
+    expect(err1).toBeNull();
+    expect(data1).not.toBeNull();
+
+    const { data: data2, error: err2 } = await aliceClient.rpc(
+      'get_or_create_active_household_invite',
+      { p_household_id: HOUSEHOLD_ID }
+    );
+    expect(err2).toBeNull();
+    expect(data2).not.toBeNull();
+
+    // Both calls should return the same active invite code
+    expect((data2 as { code: string }).code).toBe((data1 as { code: string }).code);
   });
 });
 

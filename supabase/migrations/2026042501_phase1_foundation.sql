@@ -22,6 +22,30 @@ $$;
 
 
 -- ---------------------------------------------------------------------------
+-- Helper: check household membership without self-referential RLS subqueries.
+-- SECURITY DEFINER so RLS on household_members does not apply during the check,
+-- preventing infinite recursion and incorrect tenant filtering.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.is_household_member(
+  p_household_id uuid,
+  p_user_id uuid DEFAULT auth.uid()
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.household_members hm
+    WHERE hm.household_id = p_household_id
+      AND hm.user_id = p_user_id
+  );
+$$;
+
+
+-- ---------------------------------------------------------------------------
 -- TABLES (all created before any policies are attached)
 -- ---------------------------------------------------------------------------
 
@@ -117,13 +141,7 @@ CREATE POLICY profiles_self_insert
 CREATE POLICY households_member_select
   ON public.households
   FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.household_members hm
-      WHERE hm.household_id = id
-        AND hm.user_id = auth.uid()
-    )
-  );
+  USING (public.is_household_member(public.households.id));
 
 CREATE POLICY households_creator_update
   ON public.households
@@ -139,13 +157,7 @@ CREATE POLICY households_creator_update
 CREATE POLICY household_members_member_select
   ON public.household_members
   FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.household_members hm
-      WHERE hm.household_id = household_id
-        AND hm.user_id = auth.uid()
-    )
-  );
+  USING (public.is_household_member(public.household_members.household_id));
 
 
 -- ---------------------------------------------------------------------------
@@ -155,24 +167,14 @@ CREATE POLICY household_members_member_select
 CREATE POLICY household_invites_member_read
   ON public.household_invites
   FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.household_members hm
-      WHERE hm.household_id = household_id
-        AND hm.user_id = auth.uid()
-    )
-  );
+  USING (public.is_household_member(public.household_invites.household_id));
 
 CREATE POLICY household_invites_member_insert
   ON public.household_invites
   FOR INSERT
   WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.household_members hm
-      WHERE hm.household_id = household_invites.household_id
-        AND hm.user_id = auth.uid()
-    )
-    AND created_by = auth.uid()
+    public.is_household_member(public.household_invites.household_id)
+    AND public.household_invites.created_by = auth.uid()
   );
 
 
@@ -183,37 +185,23 @@ CREATE POLICY household_invites_member_insert
 CREATE POLICY expenses_household_select
   ON public.expenses
   FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.household_members hm
-      WHERE hm.household_id = household_id
-        AND hm.user_id = auth.uid()
-    )
-  );
+  USING (public.is_household_member(public.expenses.household_id));
 
 CREATE POLICY expenses_household_insert
   ON public.expenses
   FOR INSERT
   WITH CHECK (
-    created_by = auth.uid()
-    AND EXISTS (
-      SELECT 1 FROM public.household_members hm
-      WHERE hm.household_id = expenses.household_id
-        AND hm.user_id = auth.uid()
-    )
+    public.expenses.created_by = auth.uid()
+    AND public.is_household_member(public.expenses.household_id)
   );
 
 CREATE POLICY expenses_creator_update
   ON public.expenses
   FOR UPDATE
-  USING (created_by = auth.uid())
+  USING (public.expenses.created_by = auth.uid())
   WITH CHECK (
-    created_by = auth.uid()
-    AND EXISTS (
-      SELECT 1 FROM public.household_members hm
-      WHERE hm.household_id = expenses.household_id
-        AND hm.user_id = auth.uid()
-    )
+    public.expenses.created_by = auth.uid()
+    AND public.is_household_member(public.expenses.household_id)
   );
 
 
