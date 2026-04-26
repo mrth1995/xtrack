@@ -348,3 +348,50 @@ describe('Signed-in shell — logout control', () => {
 		expect(shellSource).toContain('Log out');
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Plan 01-08, Task 3 — Loader error handling (source contract tests)
+// ---------------------------------------------------------------------------
+
+describe('Shell loader — explicit 503 error on Supabase failures (Plan 01-08)', () => {
+	it('home shell loader throws error(503) for household query failures', () => {
+		const source = readFileSync(resolve('src/routes/(app)/+page.server.ts'), 'utf8');
+		expect(source).toContain("throw error(503, 'Could not load household data.')");
+	});
+
+	it('home shell loader throws error(503) for members query failures', () => {
+		const source = readFileSync(resolve('src/routes/(app)/+page.server.ts'), 'utf8');
+		expect(source).toContain("throw error(503, 'Could not load household members.')");
+	});
+
+	it('home shell loader throws error(503) for expenses query failures', () => {
+		const source = readFileSync(resolve('src/routes/(app)/+page.server.ts'), 'utf8');
+		expect(source).toContain("throw error(503, 'Could not load household expenses.')");
+	});
+
+	it('home shell loader imports error from @sveltejs/kit', () => {
+		const source = readFileSync(resolve('src/routes/(app)/+page.server.ts'), 'utf8');
+		expect(source).toContain("from '@sveltejs/kit'");
+		// error must be imported (either named alongside redirect or as standalone)
+		expect(source).toMatch(/import\s*\{[^}]*\berror\b[^}]*\}\s*from\s*['"]@sveltejs\/kit['"]/);
+	});
+
+	it('household details loader throws error(503) for details query failure', () => {
+		const source = readFileSync(resolve('src/routes/(app)/household/+page.server.ts'), 'utf8');
+		expect(source).toContain("throw error(503, 'Could not load household details.')");
+	});
+
+	it('household details loader throws error(503) for members query failure', () => {
+		const source = readFileSync(resolve('src/routes/(app)/household/+page.server.ts'), 'utf8');
+		expect(source).toContain("throw error(503, 'Could not load household members.')");
+	});
+});
+
+describe('Signed-in shell — logout visible from household details page (Plan 01-08)', () => {
+	it('household details page contains a POST logout form', () => {
+		const source = readFileSync(resolve('src/routes/(app)/household/+page.svelte'), 'utf8');
+		expect(source).toContain('method="POST"');
+		expect(source).toContain('action="/logout"');
+		expect(source).toContain('Log out');
+	});
+});
