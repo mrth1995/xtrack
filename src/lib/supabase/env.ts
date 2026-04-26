@@ -40,6 +40,20 @@ export function validateSupabasePublicEnv(
 		fail('PUBLIC_SUPABASE_ANON_KEY is missing.');
 	}
 
+	// Reject well-known placeholder values before any network request can fire
+	// against an incorrect host. These names are commonly copy-pasted from docs
+	// or scaffolding and will cause opaque DNS/fetch failures if not caught here.
+	const ANON_KEY_PLACEHOLDERS = ['placeholder', 'your-anon-key', 'replace-me'];
+	if (ANON_KEY_PLACEHOLDERS.includes(trimmedAnonKey.toLowerCase())) {
+		fail('PUBLIC_SUPABASE_ANON_KEY still contains a placeholder value.');
+	}
+
+	// Real Supabase anon keys are JWT strings — always longer than 20 characters.
+	// A value shorter than this cannot be a real key and is likely a placeholder.
+	if (trimmedAnonKey.length < 20) {
+		fail('PUBLIC_SUPABASE_ANON_KEY is too short to be a Supabase anon key.');
+	}
+
 	return {
 		url: trimmedUrl,
 		anonKey: trimmedAnonKey

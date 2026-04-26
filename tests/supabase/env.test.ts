@@ -24,13 +24,15 @@ describe('Supabase public environment guard', () => {
 	});
 
 	it('accepts hosted and local Supabase URLs', () => {
-		expect(validateSupabasePublicEnv('https://abcd.supabase.co', 'anon-key')).toEqual({
+		// Use keys >= 20 chars to pass the too-short guard (real keys are JWTs, always much longer)
+		const mockKey = 'test-anon-key-for-unit-test-only';
+		expect(validateSupabasePublicEnv('https://abcd.supabase.co', mockKey)).toEqual({
 			url: 'https://abcd.supabase.co',
-			anonKey: 'anon-key'
+			anonKey: mockKey
 		});
-		expect(validateSupabasePublicEnv('http://127.0.0.1:54321', 'local-anon')).toEqual({
+		expect(validateSupabasePublicEnv('http://127.0.0.1:54321', mockKey)).toEqual({
 			url: 'http://127.0.0.1:54321',
-			anonKey: 'local-anon'
+			anonKey: mockKey
 		});
 	});
 });
