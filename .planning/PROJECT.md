@@ -28,7 +28,9 @@ Logging an expense must feel effortless — from the moment the user thinks "I j
 
 <!-- Shipped and confirmed valuable. -->
 
-(None yet — ship to validate)
+- [x] Installable PWA that works on iOS with home-screen icon — IndexedDB session persistence and standalone boot gate implemented. *Validated in Phase 01: foundation*
+- [x] Cloud account sign-in so data survives device changes — email/password auth with Supabase session management. *Validated in Phase 01: foundation*
+- [x] Shared household: one person creates, invites partner via short code; both see the same expense stream — household model, RLS, invite RPCs all applied to live Supabase. *Validated in Phase 01: foundation*
 
 ### Active
 
@@ -113,4 +115,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-25 — Milestone v1.0 started, iOS-first pivot*
+*Last updated: 2026-04-26 — Phase 01 complete: foundation scaffold, auth, household model, PWA session persistence*
