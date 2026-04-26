@@ -2,241 +2,200 @@
 phase: 01-foundation
 reviewed: 2026-04-26T00:00:00Z
 depth: standard
-files_reviewed: 7
+files_reviewed: 10
 files_reviewed_list:
-  - supabase/migrations/2026042501_phase1_foundation.sql
-  - tests/db/invite-rpcs.test.ts
-  - tests/db/phase1-rls.test.ts
-  - scripts/verify-phase1-supabase-env.mjs
-  - docs/qa/phase1-two-user-shared-stream.md
-  - tests/supabase/verify-phase1-supabase-env.test.ts
-  - package.json
+  - src/lib/auth/indexeddb-storage.ts
+  - src/routes/(app)/+layout.svelte
+  - src/lib/supabase/client.ts
+  - src/lib/supabase/env.ts
+  - src/routes/(app)/+page.server.ts
+  - src/routes/(app)/household/+page.server.ts
+  - src/routes/(app)/household/+page.svelte
+  - tests/auth/auth-session.test.ts
+  - tests/supabase/env.test.ts
+  - tests/households/shared-shell.test.ts
 findings:
-  critical: 1
-  warning: 5
-  info: 4
-  total: 10
+  critical: 0
+  warning: 3
+  info: 3
+  total: 6
 status: issues_found
 ---
 
-# Phase 01: Code Review Report
+# Phase 01: Code Review Report (Plan 08 Gap Closure)
 
 **Reviewed:** 2026-04-26T00:00:00Z
 **Depth:** standard
-**Files Reviewed:** 7
+**Files Reviewed:** 10
 **Status:** issues_found
 
 ## Summary
 
-Reviewed the Phase 1 foundation migration, invite RPC tests, RLS regression tests, the env-verification script, the two-user QA guide, the env-verification test suite, and package.json at standard depth.
+This review covers the Plan 08 gap-closure additions to Phase 01: IndexedDB-backed session storage (`src/lib/auth/indexeddb-storage.ts` + `src/lib/supabase/client.ts`), the standalone boot gate in `src/routes/(app)/+layout.svelte`, hardened env validation in `src/lib/supabase/env.ts`, 503 error surfacing in both page server loaders, and logout form placement on all signed-in surfaces.
 
-The critical issue is an information-disclosure gap in `is_household_member`: because the function accepts an arbitrary `p_user_id` parameter, any authenticated caller can probe membership of any user in any household. Five warnings cover: a code-collision path in `create_household_invite` that surfaces as an opaque Postgres constraint error, missing `profiles` SELECT access for co-members, test cleanup that can be skipped on assertion failure, an invite-code construction pattern that is collision-prone under parallel runs, and weak validation of `SUPABASE_SERVICE_ROLE_KEY` in the env script. Four info items cover dead constants, a tautological test, an unordered `LIMIT 1`, and missing role enforcement in invite policies.
+The overall implementation is sound and well-structured. The auth gate discriminated-union return type from `getSessionGate` is correctly applied. The 503 error throw pattern is consistent across both loaders. The env validator correctly rejects placeholder values, known short keys, and non-URL inputs before any network call can fire. Logout forms appear correctly in both `+page.svelte` files and the `POST /logout` handler exists.
 
----
+Three warnings are raised:
 
-## Critical Issues
+1. The IDB storage adapter's `localStorage` fallback will throw a `ReferenceError` in any environment where `indexedDB` is also undefined (SSR/Node), because `localStorage` is equally absent there.
+2. Each IDB storage operation opens a fresh `IDBDatabase` connection that is never explicitly closed, accumulating open handles over repeated auth storage calls.
+3. The env mock key `'test-anon-key'` in `auth-session.test.ts` is 13 characters and would fail the new `< 20` length validator if the `$lib/supabase/client` mock were ever removed or bypassed.
 
-### CR-01: `is_household_member` Exposes Arbitrary User Membership to Any Authenticated Caller
-
-**File:** `supabase/migrations/2026042501_phase1_foundation.sql:29`
-**Issue:** `public.is_household_member(p_household_id, p_user_id)` accepts a caller-supplied `p_user_id` and is `SECURITY DEFINER`, so it bypasses RLS on `household_members`. Any authenticated user can call `SELECT public.is_household_member('<any_household_id>', '<any_user_id>')` and learn whether an arbitrary user belongs to an arbitrary household. This is an information-disclosure vulnerability: it lets an attacker enumerate household membership for users they have no relationship with.
-**Fix:** Remove the `p_user_id` parameter and hard-code `auth.uid()` inside the function body. The only legitimate callers are RLS policies, which always check the current session user.
-
-```sql
-CREATE OR REPLACE FUNCTION public.is_household_member(
-  p_household_id uuid
-)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.household_members hm
-    WHERE hm.household_id = p_household_id
-      AND hm.user_id = auth.uid()
-  );
-$$;
-```
-
-Update all policy `USING` / `WITH CHECK` call sites to drop the second argument, e.g.:
-
-```sql
-USING (public.is_household_member(public.households.id))
-```
+Three informational items are also noted.
 
 ---
 
 ## Warnings
 
-### WR-01: `create_household_invite` — Loop Exit Does Not Guard Against Exhausted Unique-Code Retries
+### WR-01: IDB storage `localStorage` fallback crashes in SSR/Node where `localStorage` is also undefined
 
-**File:** `supabase/migrations/2026042501_phase1_foundation.sql:357`
-**Issue:** The loop runs at most 5 iterations searching for a non-colliding code. If all 5 collide, the loop exits and `v_code` still holds the last colliding value. The subsequent INSERT then fails with a generic `23505` unique-constraint error instead of a meaningful application error. In a long-running system with many active invites, the 8-char hex space (~4 billion values) makes collision unlikely, but the guard is still missing.
-**Fix:** After the loop, check whether `v_code` is still colliding and raise a descriptive exception:
+**File:** `src/lib/auth/indexeddb-storage.ts:104-135`
 
-```sql
-FOR i IN 1..5 LOOP
-  v_code := public.generate_invite_code();
-  EXIT WHEN NOT EXISTS (
-    SELECT 1 FROM public.household_invites WHERE code = v_code
-  );
-END LOOP;
+**Issue:** `isIdbAvailable()` returns `false` when `typeof indexedDB === 'undefined'`, which is true in Node.js and test environments without an IDB polyfill. All three storage methods then fall back unconditionally to `localStorage.getItem / setItem / removeItem`. `localStorage` is equally undefined in those same contexts, so the fallback throws a `ReferenceError` instead of degrading gracefully.
 
--- Guard: if the last generated code still collides, abort cleanly.
-IF EXISTS (SELECT 1 FROM public.household_invites WHERE code = v_code) THEN
-  RAISE EXCEPTION 'Could not generate a unique invite code after 5 attempts'
-    USING ERRCODE = 'P0020', HINT = 'retry';
-END IF;
-```
+The module comment states "Falls back to localStorage when IndexedDB is unavailable (non-browser environments such as SSR or test environments that lack IDB support) so the module does not crash in those contexts" — but that invariant is not upheld.
 
-### WR-02: `profiles_self_select` Blocks Co-Member Profile Lookups
+In production this is currently unreachable because `src/lib/supabase/client.ts` (which imports `indexedDbSessionStorage`) is a browser-only module and is never imported from server-side code. The risk is a future accidental server-side import, or a test that imports the adapter directly without a `localStorage` stub.
 
-**File:** `supabase/migrations/2026042501_phase1_foundation.sql:120`
-**Issue:** The only `SELECT` policy on `profiles` is `USING (auth.uid() = id)`. Household-member queries that join `profiles` to resolve display names — as done in the app shell loaders — will return `null` for every co-member's row. Members of the same household cannot read each other's display name or email via the standard Supabase client. This breaks the member list UI and any feature that surfaces co-member identity.
-**Fix:** Add a `SECURITY DEFINER` helper and a permissive co-member policy:
+**Fix:** Guard the fallback branch with a `typeof localStorage !== 'undefined'` check:
 
-```sql
-CREATE OR REPLACE FUNCTION public.shares_household_with(p_user_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.household_members me
-    JOIN public.household_members peer
-      ON peer.household_id = me.household_id
-    WHERE me.user_id = auth.uid()
-      AND peer.user_id = p_user_id
-  );
-$$;
+```typescript
+function isLocalStorageAvailable(): boolean {
+  return typeof localStorage !== 'undefined';
+}
 
-CREATE POLICY profiles_household_member_select
-  ON public.profiles
-  FOR SELECT
-  USING (id = auth.uid() OR public.shares_household_with(public.profiles.id));
-```
-
-### WR-03: Test Cleanup Is Not Performed When Assertions Fail
-
-**File:** `tests/db/phase1-rls.test.ts:253`
-**Issue:** Multiple integration tests create temporary auth users and clean them up at the end of the test body. If any `expect()` assertion throws before the cleanup block is reached, the temporary users are never deleted and accumulate in the local Supabase instance. The affected tests include "Valid invite code can be accepted by a new user" (line 235), "Expired invite rejects with expired hint" (line 279), and "Invite code can be accepted exactly once" (line 318). The cross-household denial tests have the same pattern (lines 149, 178, 205).
-**Fix:** Use `try/finally` to guarantee cleanup, or extract user creation/deletion into `beforeEach`/`afterEach` hooks:
-
-```ts
-it.skipIf(SKIP_INTEGRATION)('Valid invite code can be accepted by a new user', async () => {
-  const sc = serviceClient();
-  const { data: userData } = await sc.auth.admin.createUser({ ... });
-  const newUserId = userData!.user!.id;
-
-  try {
-    // ... test body with all expect() calls ...
-  } finally {
-    await sc.auth.admin.deleteUser(newUserId);
+// In getItem:
+async getItem(key: string): Promise<string | null> {
+  if (!isIdbAvailable()) {
+    return isLocalStorageAvailable() ? localStorage.getItem(key) : null;
   }
-});
+  try {
+    return await idbGet(key);
+  } catch {
+    return isLocalStorageAvailable() ? localStorage.getItem(key) : null;
+  }
+},
+
+// In setItem: no-op when localStorage unavailable (silent, not a throw)
+// In removeItem: no-op when localStorage unavailable
 ```
 
-### WR-04: Invite Code Construction Is Collision-Prone Under Parallel or Rapid Test Runs
+---
 
-**File:** `tests/db/phase1-rls.test.ts:250`
-**Issue:** Fresh invite codes are constructed by slicing a timestamp-prefixed string to 8 characters, e.g. `\`FRESH${timestamp}\`.slice(0, 8)`. `Date.now()` returns 13 decimal digits. Slicing the combined string at 8 characters always yields the first 8 characters of the prefix literal plus at most a few timestamp digits. For example: `"FRESH" + "1745..." = "FRESH174"` — a fixed 8-char string for any test run in a short time window. The same applies to `EXP${timestamp}`, `SGL${timestamp}`, and `LKP${timestamp}`. Two test runs within the same second (or parallel CI workers) will try to insert the same code and hit the UNIQUE constraint.
-**Fix:** Use `gen_random_uuid()` or a random suffix via the service client, or take the timestamp suffix rather than the prefix:
+### WR-02: Each IDB operation opens a new `IDBDatabase` connection that is never closed
 
-```ts
-// Take last 8 chars of timestamp to maximize entropy:
-const freshCode = `F${timestamp}`.slice(-8).toUpperCase();
+**File:** `src/lib/auth/indexeddb-storage.ts:27-46`
 
-// Or, better, use service role to call generate_invite_code():
-const { data: codeData } = await sc.rpc('generate_invite_code');
-const freshCode = codeData as string;
+**Issue:** `openDb()` is called on every `getItem`, `setItem`, and `removeItem` invocation. Each call resolves a fresh `IDBDatabase` instance that is never passed to `db.close()`. Browsers impose per-origin limits on open IndexedDB connections and fire `versionchange` events against leaked handles during schema upgrades. For an auth storage adapter invoked on every session access, this handle accumulation grows with use.
+
+**Fix:** Cache the database connection as a module-level singleton promise so `openDb()` only opens the database once:
+
+```typescript
+let _dbPromise: Promise<IDBDatabase> | null = null;
+
+function openDb(): Promise<IDBDatabase> {
+  if (!_dbPromise) {
+    _dbPromise = new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'key' });
+        }
+      };
+      request.onsuccess = (event) =>
+        resolve((event.target as IDBOpenDBRequest).result);
+      request.onerror = (event) => {
+        _dbPromise = null; // allow retry on next call
+        reject((event.target as IDBOpenDBRequest).error);
+      };
+    });
+  }
+  return _dbPromise;
+}
 ```
 
-### WR-05: `SUPABASE_SERVICE_ROLE_KEY` Validation Accepts Placeholder Values
+Reset `_dbPromise = null` in the `onerror` handler so a transient open failure allows a retry on the next call.
 
-**File:** `scripts/verify-phase1-supabase-env.mjs:69`
-**Issue:** `PUBLIC_SUPABASE_ANON_KEY` is validated for emptiness, known placeholder strings (`placeholder`, `your-anon-key`, `replace-me`), and minimum length. `SUPABASE_SERVICE_ROLE_KEY` is only validated for emptiness. A developer who copies a `.env.example` with a placeholder service key like `"replace-me"` or `"your-service-role-key"` will see `Supabase Phase 1 env looks ready.` and exit 0, defeating the purpose of the check.
-**Fix:** Apply the same placeholder and minimum-length checks to the service role key:
+---
 
-```js
-const PLACEHOLDER_SERVICE_KEYS = new Set(['placeholder', 'your-service-role-key', 'replace-me']);
+### WR-03: Test mock anon key `'test-anon-key'` (13 chars) would fail the new length validator if client mock is removed
 
-if (PLACEHOLDER_SERVICE_KEYS.has(rawServiceKey.toLowerCase())) {
-  fail('SUPABASE_SERVICE_ROLE_KEY contains a placeholder value. Replace it with your real service role key.');
-}
+**File:** `tests/auth/auth-session.test.ts:51`
 
-if (rawServiceKey.length < MIN_KEY_LENGTH) {
-  fail(`SUPABASE_SERVICE_ROLE_KEY is too short (${rawServiceKey.length} chars).`);
-}
+**Issue:** The `$env/static/public` mock at line 49-52 sets `PUBLIC_SUPABASE_ANON_KEY: 'test-anon-key'`. This value is 13 characters and would be rejected by `validateSupabasePublicEnv` ("too short to be a Supabase anon key") if `src/lib/supabase/client.ts` were ever imported directly instead of via the `vi.mock('$lib/supabase/client', ...)` factory.
+
+Currently the full module mock prevents `client.ts` from initialising, so no failure occurs. However, the env mock and the client mock are now implicitly coupled: removing or adjusting the client mock without updating the env mock would cause all tests in this file to fail with an env-validation error rather than a meaningful test assertion failure.
+
+**Fix:** Update the env mock to use a value that satisfies the `>= 20` character guard:
+
+```typescript
+vi.mock('$env/static/public', () => ({
+  PUBLIC_SUPABASE_URL: 'http://localhost:54321',
+  PUBLIC_SUPABASE_ANON_KEY: 'test-anon-key-for-unit-tests-only' // 33 chars
+}));
 ```
 
 ---
 
 ## Info
 
-### IN-01: Dead Constants — `BOB_ID`, `ACTIVE_INVITE_CODE`, `EXPIRED_INVITE_CODE` Never Used
+### IN-01: Tautological test — banner copy asserts a local string literal equals itself
 
-**File:** `tests/db/phase1-rls.test.ts:33`
-**Issue:** `BOB_ID` (line 33), `ACTIVE_INVITE_CODE` (line 35), and `EXPIRED_INVITE_CODE` (line 36) are declared as module-level constants but are never referenced in any test body. They appear to be scaffolding that was not wired up. If they were intended to drive seed-code lookups, the tests using dynamically inserted codes miss static seed coverage.
-**Fix:** Either remove the unused constants, or wire them into tests that verify the seeded invite codes directly (e.g., assert that `EXPIRED_INVITE_CODE = 'EXPCODE'` is rejected by `accept_household_invite`).
+**File:** `tests/households/shared-shell.test.ts:329-334`
 
-### IN-02: Tautological Test — Function Name Compared to Itself
+**Issue:** The test "install guidance copy is exactly 'Tap Share, then Add to Home Screen'" creates a local string variable and then asserts it equals itself. No source file is read; no production code is exercised. This test always passes regardless of what `InstallGuidanceBanner.svelte` actually renders and provides zero protection for the acceptance criterion it claims to lock.
 
-**File:** `tests/db/phase1-rls.test.ts:473`
-**Issue:** The test `'accept_household_invite is the canonical function name'` (lines 473–477) assigns the string `'accept_household_invite'` to `fnName` and then asserts `expect(fnName).toBe('accept_household_invite')`. This assertion is structurally always true and provides zero drift detection. If the function is renamed in the migration the test still passes.
-**Fix:** Remove the test or replace it with a static assertion that reads the migration file and confirms the function name appears:
+```typescript
+// Current: always green, tests nothing
+const bannerCopy = 'Tap Share, then Add to Home Screen';
+expect(bannerCopy).toBe('Tap Share, then Add to Home Screen');
+```
 
-```ts
-it('accept_household_invite is defined in the foundation migration', () => {
-  const migration = readFileSync(
-    resolve('supabase/migrations/2026042501_phase1_foundation.sql'), 'utf8'
+**Fix:** Read the component source and assert the literal is present there:
+
+```typescript
+it('install guidance copy is exactly "Tap Share, then Add to Home Screen"', () => {
+  const source = readFileSync(
+    resolve('src/lib/components/InstallGuidanceBanner.svelte'),
+    'utf8'
   );
-  expect(migration).toContain('CREATE OR REPLACE FUNCTION public.accept_household_invite');
+  expect(source).toContain('Tap Share, then Add to Home Screen');
 });
 ```
 
-### IN-03: `current_household_id` Uses `LIMIT 1` Without `ORDER BY`
+---
 
-**File:** `supabase/migrations/2026042501_phase1_foundation.sql:234`
-**Issue:** `current_household_id()` selects `household_id FROM household_members WHERE user_id = auth.uid() LIMIT 1` without an `ORDER BY`. The comment acknowledges v1 allows only one household per user, but the UNIQUE constraint on `(household_id, user_id)` does not prevent a user from appearing in multiple households if inserted directly. Under that condition the returned household ID is non-deterministic across Postgres plan changes.
-**Fix:** Add `ORDER BY joined_at` (or `id`) to guarantee a stable, reproducible result if the invariant is ever violated:
+### IN-02: `household` typed as nullable in page server returns but the null path is structurally unreachable
 
-```sql
-SELECT household_id
-FROM public.household_members
-WHERE user_id = auth.uid()
-ORDER BY joined_at
-LIMIT 1;
+**File:** `src/routes/(app)/+page.server.ts:70-78`, `src/routes/(app)/household/+page.server.ts:56-64`
+
+**Issue:** Both loaders declare `household` as `HouseholdSummary | null` (or `HouseholdDetail | null`) and return it. The Svelte templates use `household?.name ?? 'Your household'` — a null guard on the name only. In practice `household` is never null when execution reaches the return statement: `locals.householdId` is validated before the query runs, and `.single()` maps a missing row to a PGRST116 error which is caught by the preceding `if (householdError)` guard. The nullable type is a type-system artefact of the `as unknown as T | null` cast pattern, not a runtime reality.
+
+This is not a bug, but the nullable return type causes the template to carry defensive `?.` chains that obscure the actual invariant, and it means the templates render a degraded-but-wrong state (`'Your household'` heading with a real member list) if the invariant were ever violated.
+
+**Fix:** Narrow the type to non-nullable after the error guard, or add an explicit null throw:
+
+```typescript
+if (!householdRaw) {
+  throw error(503, 'Household not found.');
+}
+const household: HouseholdSummary = householdRaw as unknown as HouseholdSummary;
 ```
 
-### IN-04: Invite INSERT Policy Allows Any Member to Create Invites (Role Not Enforced)
+This simplifies template code and makes the invariant explicit.
 
-**File:** `supabase/migrations/2026042501_phase1_foundation.sql:174`
-**Issue:** The `household_invites_member_insert` policy allows any member (regardless of `role`) to create new invite codes. The `household_members` table has a `role` column with `'owner'` and `'member'` values. If invite creation should be owner-only (common in team-management products), the policy should filter on `role = 'owner'`. This may be an intentional permissive design, but it should be an explicit decision rather than an oversight.
-**Fix (if owner-only intent):**
+---
 
-```sql
-DROP POLICY IF EXISTS household_invites_member_insert ON public.household_invites;
-CREATE POLICY household_invites_member_insert
-  ON public.household_invites
-  FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.household_members
-      WHERE household_id = public.household_invites.household_id
-        AND user_id = auth.uid()
-        AND role = 'owner'
-    )
-    AND public.household_invites.created_by = auth.uid()
-  );
-```
+### IN-03: Duplicated `as unknown as T` cast-and-map pattern across two page servers
 
-If any member may invite, document this as a deliberate choice.
+**File:** `src/routes/(app)/+page.server.ts:70-78, 115-124`, `src/routes/(app)/household/+page.server.ts:56-64, 88-97`
+
+**Issue:** Both page server files repeat an identical three-step pattern: cast to `unknown`, cast to the target type, then map to a plain object. The household row mapping and the member array mapping each appear twice across two files with only the interface name differing. The inline comment "cast via unknown to avoid Supabase generic narrowing to never" is correct, but maintaining the cast boundary in four separate places increases the risk of a silent divergence if the query columns change.
+
+This is a code quality note — not a bug. No immediate action is required.
+
+**Fix:** Extract the cast-and-map logic into shared helpers (e.g., `src/lib/supabase/mappers.ts`) once a third page server needs the same data shape. Premature extraction is not recommended at the current scale.
 
 ---
 
