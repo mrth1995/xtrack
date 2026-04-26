@@ -9,7 +9,8 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test": "vitest run",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "verify:supabase-env": "node scripts/verify-phase1-supabase-env.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
