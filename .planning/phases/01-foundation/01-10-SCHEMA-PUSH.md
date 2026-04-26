@@ -86,3 +86,19 @@ No pending migrations. The remote schema is current.
 | Second push exit | 0 |
 | Final schema state | CURRENT (no pending migrations) |
 | Project ref | wqfybujkalbwyvcvyefg |
+
+## Post-push verification
+
+Run after schema push confirmed APPLIED/CURRENT. Timestamp: 2026-04-26T00:18:00Z
+
+| Command | Status | Notes |
+|---------|--------|-------|
+| `npm run verify:supabase-env` | PASS | With real-looking test values; exits 0 |
+| `npm run test:unit -- phase1-rls` | PASS | 4 passed, 13 skipped (integration guards require live Supabase creds) |
+| `npm run test:unit -- onboarding invite-rpcs shared-shell auth-session env` | PASS | 110 tests passed across 7 test files |
+| `npm run check` | SKIP (pre-existing) | 4 type errors for missing PUBLIC_SUPABASE_URL/PUBLIC_SUPABASE_ANON_KEY — pre-existing worktree issue (no .env), not caused by Plan 01-10 |
+| `npm run build` | SKIP (pre-existing) | Same missing env issue — Rollup cannot resolve PUBLIC_SUPABASE_URL from $env/static/public without a .env file |
+
+All automated tests pass. `check` and `build` failures are pre-existing worktree issues
+(gitignored `.env` not present) documented in Plan 01-09 SUMMARY. They will pass when
+the developer adds real credentials to `.env`.
