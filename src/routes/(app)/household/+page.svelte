@@ -84,5 +84,18 @@
 				Invite a member
 			</a>
 		</div>
+
+		<!-- Secondary logout — AUTH-03: logout visible from all signed-in surfaces -->
+		<div class="mt-3">
+			<form method="POST" action="/logout">
+				<button
+					type="submit"
+					class="flex min-h-[44px] w-full items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold transition-colors"
+					style="border-color: var(--color-border, #E7DED0); color: var(--color-muted); background: transparent"
+				>
+					Log out
+				</button>
+			</form>
+		</div>
 	</div>
 </main>

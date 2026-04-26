@@ -1,5 +1,5 @@
 /**
- * Auth and session regression tests (Plan 01-03, Task 3)
+ * Auth and session regression tests (Plan 01-03, Task 3; Plan 01-08, Task 1)
  *
  * Covers:
  * - validateEmail / validatePassword / validateAuthForm (pure, no mocks needed)
@@ -12,6 +12,9 @@
  * - signInWithPassword and signUp paths are called with correct arguments (login/signup
  *   server action contract)
  * - signOut is called on logout
+ * - IndexedDB storage adapter: setItem/getItem round-trip (Plan 01-08)
+ * - src/lib/supabase/client.ts configures storage: indexedDbSessionStorage (Plan 01-08)
+ * - src/routes/(app)/+layout.svelte gates on getSessionGate and redirects on failure (Plan 01-08)
  *
  * Mocking approach:
  *   - $lib/supabase/client is mocked entirely so no real Supabase network calls occur.
@@ -474,5 +477,74 @@ describe('signOut contract', () => {
 
 		expect(result.session).toBeNull();
 		expect(result.user).toBeNull();
+	});
+});
+
+// ===========================================================================
+// IndexedDB session storage adapter (Plan 01-08, Task 1)
+// ===========================================================================
+
+describe('indexedDbSessionStorage adapter', () => {
+	it('setItem then getItem returns the stored value', async () => {
+		const { indexedDbSessionStorage } = await import('$lib/auth/indexeddb-storage');
+		await indexedDbSessionStorage.setItem('test-key', 'test-value');
+		const result = await indexedDbSessionStorage.getItem('test-key');
+		expect(result).toBe('test-value');
+	});
+
+	it('getItem returns null for a key that has not been set', async () => {
+		const { indexedDbSessionStorage } = await import('$lib/auth/indexeddb-storage');
+		const result = await indexedDbSessionStorage.getItem('non-existent-key-' + Date.now());
+		expect(result).toBeNull();
+	});
+
+	it('removeItem deletes the stored value', async () => {
+		const { indexedDbSessionStorage } = await import('$lib/auth/indexeddb-storage');
+		await indexedDbSessionStorage.setItem('remove-me', 'bye');
+		await indexedDbSessionStorage.removeItem('remove-me');
+		const result = await indexedDbSessionStorage.getItem('remove-me');
+		expect(result).toBeNull();
+	});
+});
+
+// ===========================================================================
+// Supabase client — IndexedDB storage configuration (Plan 01-08, Task 1)
+// ===========================================================================
+
+describe('Supabase browser client config — IndexedDB storage', () => {
+	it('src/lib/supabase/client.ts configures auth with storage: indexedDbSessionStorage', async () => {
+		const { readFileSync } = await import('node:fs');
+		const { resolve } = await import('node:path');
+		const source = readFileSync(resolve('src/lib/supabase/client.ts'), 'utf8');
+		expect(source).toContain('indexedDbSessionStorage');
+		expect(source).toContain('storage: indexedDbSessionStorage');
+	});
+});
+
+// ===========================================================================
+// (app)/+layout.svelte — standalone session gate (Plan 01-08, Task 1)
+// ===========================================================================
+
+describe('(app)/+layout.svelte — standalone session gate', () => {
+	it('calls getSessionGate before rendering children in standalone mode', async () => {
+		const { readFileSync } = await import('node:fs');
+		const { resolve } = await import('node:path');
+		const source = readFileSync(resolve('src/routes/(app)/+layout.svelte'), 'utf8');
+		expect(source).toContain('getSessionGate');
+		expect(source).toContain('isStandalone');
+	});
+
+	it('redirects unauthenticated standalone sessions to /auth?session=expired', async () => {
+		const { readFileSync } = await import('node:fs');
+		const { resolve } = await import('node:path');
+		const source = readFileSync(resolve('src/routes/(app)/+layout.svelte'), 'utf8');
+		expect(source).toContain('/auth?session=expired');
+	});
+
+	it('shows "Restoring your session..." while standalone restoration is pending', async () => {
+		const { readFileSync } = await import('node:fs');
+		const { resolve } = await import('node:path');
+		const source = readFileSync(resolve('src/routes/(app)/+layout.svelte'), 'utf8');
+		expect(source).toContain('Restoring your session...');
 	});
 });
