@@ -3,7 +3,6 @@ import type { Actions, PageServerLoad } from './$types';
 import { joinHouseholdSchema } from '$lib/households/schemas';
 import { lookupInviteCode, acceptHouseholdInvite } from '$lib/server/households/service';
 import type { HouseholdServiceError } from '$lib/server/households/service';
-import { createServerClient } from '$lib/supabase/server';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.session) {
@@ -20,8 +19,7 @@ export const actions: Actions = {
 	 * Lookup action: validates and looks up the invite code to show household
 	 * name confirmation. Does not join the household yet.
 	 */
-	lookupInvite: async (event) => {
-		const { request, locals } = event;
+	lookupInvite: async ({ request, locals }) => {
 		if (!locals.session) {
 			throw redirect(303, '/auth');
 		}
@@ -38,7 +36,8 @@ export const actions: Actions = {
 			});
 		}
 
-		const supabase = createServerClient(event);
+		// Reuse the request-scoped client created in hooks.server.ts.
+		const supabase = locals.supabase;
 		try {
 			const result = await lookupInviteCode(supabase, parsed.data.code);
 			// Show confirmation step with household name per D-08
@@ -63,8 +62,7 @@ export const actions: Actions = {
 	 * Join action: accepts the confirmed invite code and joins the household.
 	 * Only called after the user has seen the confirmation step.
 	 */
-	join: async (event) => {
-		const { request, locals } = event;
+	join: async ({ request, locals }) => {
 		if (!locals.session) {
 			throw redirect(303, '/auth');
 		}
@@ -81,7 +79,8 @@ export const actions: Actions = {
 			});
 		}
 
-		const supabase = createServerClient(event);
+		// Reuse the request-scoped client created in hooks.server.ts.
+		const supabase = locals.supabase;
 		try {
 			await acceptHouseholdInvite(supabase, parsed.data.code);
 		} catch (err: unknown) {

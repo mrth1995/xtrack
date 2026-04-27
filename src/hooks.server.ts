@@ -6,12 +6,17 @@ import { createServerClient } from '$lib/supabase/server';
  * Global server hook.
  *
  * Responsibilities:
- * 1. Create a request-scoped Supabase client and restore the session from cookies.
- * 2. Attach `user`, `session`, and `householdId` to `event.locals`.
+ * 1. Create a request-scoped Supabase client, store it in locals, and restore the session from cookies.
+ * 2. Attach `supabase`, `user`, `session`, and `householdId` to `event.locals`.
  * 3. Guard all `(app)` routes: redirect unauthenticated requests to `/auth`.
+ *
+ * The client is stored in locals so that load functions and server actions
+ * reuse the same instance — ensuring the auth state (including any token
+ * refresh) is consistent across the entire request lifecycle.
  */
 export const handle: Handle = async ({ event, resolve }) => {
 	const supabase = createServerClient(event);
+	event.locals.supabase = supabase;
 
 	const {
 		data: { session }

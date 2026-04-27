@@ -1,7 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getOrCreateActiveInviteCode } from '$lib/server/households/service';
-import { createServerClient } from '$lib/supabase/server';
 
 /**
  * Invite management page load function.
@@ -10,8 +9,7 @@ import { createServerClient } from '$lib/supabase/server';
  * Implements D-22 through D-27: show current active code if valid,
  * auto-generate only when expired/used, show joined status after use.
  */
-export const load: PageServerLoad = async (event) => {
-	const { locals } = event;
+export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.session) {
 		throw redirect(303, '/auth');
 	}
@@ -21,7 +19,8 @@ export const load: PageServerLoad = async (event) => {
 		throw redirect(303, '/onboarding');
 	}
 
-	const supabase = createServerClient(event);
+	// Reuse the request-scoped client created in hooks.server.ts.
+	const supabase = locals.supabase;
 	try {
 		const invite = await getOrCreateActiveInviteCode(supabase, householdId);
 

@@ -1,6 +1,5 @@
 import type { PageServerLoad } from './$types';
 import { redirect, error } from '@sveltejs/kit';
-import { createServerClient } from '$lib/supabase/server';
 
 interface MemberWithProfile {
 	id: string;
@@ -46,14 +45,14 @@ export interface HouseholdSummary {
  * Users without a household are redirected to onboarding.
  * Unauthenticated users are already redirected by the layout server guard.
  */
-export const load: PageServerLoad = async (event) => {
-	const { locals } = event;
-
+export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.householdId) {
 		throw redirect(303, '/onboarding');
 	}
 
-	const supabase = createServerClient(event);
+	// Reuse the request-scoped client created in hooks.server.ts so the auth
+	// state (session, any token refresh) is consistent for this request.
+	const supabase = locals.supabase;
 	const householdId = locals.householdId;
 
 	// Load household row — cast via unknown to avoid Supabase generic narrowing to never
@@ -64,6 +63,7 @@ export const load: PageServerLoad = async (event) => {
 		.single();
 
 	if (householdError) {
+		console.error('[/+page.server] households query failed:', householdError.code, householdError.message, householdError.details);
 		throw error(503, 'Could not load household data.');
 	}
 
@@ -96,6 +96,7 @@ export const load: PageServerLoad = async (event) => {
 		.order('joined_at', { ascending: true });
 
 	if (membersError) {
+		console.error('[/+page.server] household_members query failed:', membersError.code, membersError.message);
 		throw error(503, 'Could not load household members.');
 	}
 
@@ -109,6 +110,7 @@ export const load: PageServerLoad = async (event) => {
 		.limit(5);
 
 	if (expensesError) {
+		console.error('[/+page.server] expenses query failed:', expensesError.code, expensesError.message);
 		throw error(503, 'Could not load household expenses.');
 	}
 

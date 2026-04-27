@@ -1,21 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockCreateHousehold = vi.fn();
-const mockCreateServerClient = vi.fn();
 
 vi.mock('$lib/server/households/service', () => ({
 	createHousehold: mockCreateHousehold
-}));
-
-vi.mock('$lib/supabase/server', () => ({
-	createServerClient: mockCreateServerClient
 }));
 
 describe('onboarding route redirects', () => {
 	beforeEach(() => {
 		vi.resetModules();
 		vi.clearAllMocks();
-		mockCreateServerClient.mockReturnValue({});
 	});
 
 	it('onboarding load redirects unauthenticated users to /auth', async () => {
@@ -52,6 +46,8 @@ describe('onboarding route redirects', () => {
 			created_at: '2026-04-25T00:00:00Z'
 		});
 
+		const mockSupabase = {};
+
 		const { actions } = await import('../../src/routes/(app)/onboarding/create/+page.server');
 		const body = new URLSearchParams({ name: 'The Smiths' });
 		const request = new Request('http://localhost:5173/onboarding/create', {
@@ -65,7 +61,7 @@ describe('onboarding route redirects', () => {
 		await expect(
 			actions.default({
 				request,
-				locals: { session: { user: { id: 'user-1' } }, householdId: null }
+				locals: { session: { user: { id: 'user-1' } }, householdId: null, supabase: mockSupabase }
 			} as never)
 		).rejects.toMatchObject({
 			status: 303,
@@ -73,6 +69,8 @@ describe('onboarding route redirects', () => {
 		});
 
 		expect(mockCreateHousehold).toHaveBeenCalledOnce();
-		expect(mockCreateServerClient).toHaveBeenCalledOnce();
+		// The action now uses locals.supabase (set by hooks.server.ts) rather than
+		// creating its own client, so mockCreateHousehold receives the locals client.
+		expect(mockCreateHousehold).toHaveBeenCalledWith(mockSupabase, 'The Smiths');
 	});
 });

@@ -1,6 +1,5 @@
 import type { PageServerLoad } from './$types';
 import { redirect, error } from '@sveltejs/kit';
-import { createServerClient } from '$lib/supabase/server';
 
 interface MemberWithProfile {
 	id: string;
@@ -32,14 +31,13 @@ export interface HouseholdDetail {
  * Loads household identity and full member list in one surface (D-31).
  * Redirects to onboarding if the user has no household.
  */
-export const load: PageServerLoad = async (event) => {
-	const { locals } = event;
-
+export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.householdId) {
 		throw redirect(303, '/onboarding');
 	}
 
-	const supabase = createServerClient(event);
+	// Reuse the request-scoped client created in hooks.server.ts.
+	const supabase = locals.supabase;
 	const householdId = locals.householdId;
 
 	// Load household row — cast via unknown to avoid Supabase generic narrowing to never
@@ -50,6 +48,7 @@ export const load: PageServerLoad = async (event) => {
 		.single();
 
 	if (householdError) {
+		console.error('[/household/+page.server] households query failed:', householdError.code, householdError.message, householdError.details);
 		throw error(503, 'Could not load household details.');
 	}
 
@@ -82,6 +81,7 @@ export const load: PageServerLoad = async (event) => {
 		.order('joined_at', { ascending: true });
 
 	if (membersError) {
+		console.error('[/household/+page.server] household_members query failed:', membersError.code, membersError.message);
 		throw error(503, 'Could not load household members.');
 	}
 
