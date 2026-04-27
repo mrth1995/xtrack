@@ -55,7 +55,12 @@ Plans:
   3. Double-tapping a category tile does not create a duplicate expense
   4. User can open a saved expense, change the amount, category, note, or date, and save the edit
   5. User can delete a saved expense; it disappears from the list
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 02-01-PLAN.md — Foundation utilities: IDR/date formatters, Zod schemas, shared ExpenseList, Wave 0 RED test scaffolds
+- [ ] 02-02-PLAN.md — Quick Add home page: numpad + category grid + today list + note bottom sheet + gear menu + saveExpense/saveNote actions
+- [ ] 02-03-PLAN.md — Expense history (/expenses) and edit/delete (/expenses/[id]/edit) with WIB date round-trip and soft delete
+- [ ] 02-04-PLAN.md — Phase 2 acceptance gate: human UAT walk-through of all INPUT-01 through INPUT-14 behaviours
 **UI hint**: yes
 
 ### Phase 3: Offline Tolerance
@@ -114,7 +119,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete | 2026-04-25 |
-| 2. Quick Add | 0/TBD | Not started | - |
+| 2. Quick Add | 0/4 | Not started | - |
 | 3. Offline Tolerance | 0/TBD | Not started | - |
 | 4. PWA + Realtime | 0/TBD | Not started | - |
 | 5. Reports | 0/TBD | Not started | - |
