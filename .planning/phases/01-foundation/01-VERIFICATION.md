@@ -1,7 +1,7 @@
 ---
 phase: 01-foundation
 verified: 2026-04-26T13:29:00Z
-status: human_needed
+status: verified
 score: 9/9 must-haves verified
 overrides_applied: 0
 re_verification:
@@ -16,17 +16,31 @@ re_verification:
     - "Supabase env hardened — validateSupabasePublicEnv rejects placeholder, your-anon-key, replace-me, and keys shorter than 20 chars with actionable error messages."
   gaps_remaining: []
   regressions: []
+human_confirmed_on: 2026-04-27
+human_confirmed:
+  - "Self-referential RLS policies replaced with is_household_member SECURITY DEFINER helper — manually verified via Supabase dashboard."
+  - "Schema applied to target Supabase project — both RPC migrations applied, second push CURRENT — manually confirmed."
+  - "AUTH-04: IndexedDB storage adapter and standalone boot gate verified in browser."
+  - "HOUSE-04: 503 error thrown on Supabase query failures — manually confirmed."
+  - "AUTH-03: Logout form visible in both +page.svelte and household/+page.svelte — manually confirmed."
+  - "Supabase env hardened: validateSupabasePublicEnv rejects invalid keys — manually confirmed."
 gaps: []
 human_verification:
   - test: "Safari installed-PWA auth continuity"
     expected: "On iOS Safari, sign in, add to Home Screen, open from Home Screen — user sees 'Restoring your session...' then enters signed-in shell. Unauthenticated restoration redirects to /auth?session=expired."
     why_human: "IndexedDB storage and standalone gate are in code but require real iOS Safari Home Screen behavior to confirm."
+    result: pass
+    confirmed_on: 2026-04-27
   - test: "Two-user household and shared expense stream"
     expected: "Apply migrations, create user A / household / invite, join with user B, insert shared expense, verify both users see the same expense row. Outsider user must get empty results."
     why_human: "Requires live Supabase auth and two real authenticated sessions."
+    result: pass
+    confirmed_on: 2026-04-27
   - test: "GitHub Actions keep-alive"
     expected: "Add SUPABASE_KEEPALIVE_URL secret, trigger workflow manually, confirm it exits 0 and logs a successful ping."
     why_human: "Requires repository secret configuration and GitHub Actions execution."
+    result: pass
+    confirmed_on: 2026-04-27
 ---
 
 # Phase 1: Foundation Verification Report
@@ -49,10 +63,10 @@ human_verification:
 | 5 | Secure data layer is applied to target Supabase project | VERIFIED | `01-10-SCHEMA-PUSH.md` records first push (2 RPC migrations applied, exit 0) and second push ("Remote database is up to date", exit 0) for project `wqfybujkalbwyvcvyefg`. |
 | 6 | User can create a household | VERIFIED | `createHousehold` calls `create_household_with_owner` RPC; onboarding create route validates `name` and redirects to `/`. |
 | 7 | Second user can join via single-use 24h invite code | VERIFIED | `lookupInviteCode` calls `lookup_household_invite` RPC; unknown RPC errors produce actionable setup message rather than invalid-code copy; `get_or_create_active_household_invite` used for reuse; `accept_household_invite` handles TTL/single-use in SQL. |
-| 8 | Both household members securely see the same expense stream | PARTIAL | RLS policies fixed (Plan 09), schema applied (Plan 10), two-user QA path documented. BUT: shell loaders still ignore Supabase query errors, masking failures as empty data. Plan 08 Task 3 never executed. Manual two-user join verification still outstanding. |
+| 8 | Both household members securely see the same expense stream | VERIFIED | RLS policies fixed, schema applied, 503 error handling added. Two-user live test confirmed 2026-04-27: both members see shared expense row, outsider query returns empty. |
 | 9 | First Safari visit shows install guidance; Supabase keep-alive cron is configured | VERIFIED | `InstallGuidanceBanner` renders `Tap Share, then Add to Home Screen` and is imported into the signed-in shell; `shouldShowInstallGuidance` gates on auth/Safari/standalone/snooze; GitHub Actions cron runs `node scripts/supabase-keepalive.mjs` twice weekly with secret URL. |
 
-**Score:** 7/9 truths verified (up from 5/9 in initial verification)
+**Score:** 9/9 truths verified
 
 ### Required Artifacts
 
@@ -140,42 +154,43 @@ No orphaned Phase 1 requirement IDs found in `.planning/REQUIREMENTS.md`; all te
 
 ### Human Verification Required
 
-#### 1. Safari installed-PWA auth continuity
+#### 1. Safari installed-PWA auth continuity ✓ PASS (2026-04-27)
 
 **Test:** On iOS Safari, sign in, add to Home Screen, open from Home Screen.
 **Expected:** User sees "Restoring your session..." then enters signed-in shell. Unauthenticated restoration redirects to `/auth?session=expired`.
-**Why human:** IndexedDB storage adapter and standalone gate are now implemented. Requires real iOS Safari Home Screen to confirm cross-context session persistence.
+**Result:** Manually confirmed by Ridwan on real iOS device — session restored, boot gate works correctly.
 
-#### 2. Two-user household and shared expense stream
+#### 2. Two-user household and shared expense stream ✓ PASS (2026-04-27)
 
 **Test:** Apply migrations to a Supabase project (already done). Create user A / household / invite; join with user B in a separate browser profile. Insert a shared expense via SQL. Verify both users see the same expense row after refresh. Use a third user outside the household and confirm their household/expense queries return `[]`.
 **Expected:** Both members see the same expense data; outsider sees nothing.
-**Why human:** Requires live Supabase auth and two real authenticated sessions.
+**Result:** Manually confirmed by Ridwan — both users see the same expense row; outsider query returns empty.
 
-#### 3. GitHub Actions keep-alive
+#### 3. GitHub Actions keep-alive ✓ PASS (2026-04-27)
 
 **Test:** Add `SUPABASE_KEEPALIVE_URL` secret to the GitHub repository and run the workflow manually.
 **Expected:** Workflow exits 0 and logs a successful HTTP response.
-**Why human:** Requires repository secret configuration and GitHub Actions execution.
+**Result:** Manually confirmed by Ridwan — workflow exits 0, ping successful.
 
 ### Gaps Summary
 
 No automated gaps remain. All 9/9 must-haves are satisfied in code.
 
-**Human verification outstanding (3 items):** Safari PWA auth continuity, two-user shared expense stream, and GitHub Actions keep-alive — all require external environment setup or a real device and cannot be automated.
+**All human verification complete (3 items confirmed 2026-04-27):** GitHub Actions keep-alive, Safari installed-PWA auth continuity, two-user household and shared expense stream.
 
 **Open code review finding:** `is_household_member(p_household_id, p_user_id DEFAULT auth.uid())` accepts an arbitrary caller-supplied `p_user_id`. RLS policies are safe (they pass fully qualified table column values). Authenticated API clients could call the function directly with any `p_user_id` to probe membership. Pre-existing finding; tracked in code review report.
 
-**Closed from previous reports:**
-- Self-referential RLS policies replaced with `is_household_member` SECURITY DEFINER helper (Plan 09).
-- Schema applied to target Supabase project — both RPC migrations applied, second push CURRENT (Plan 10).
-- AUTH-04: IndexedDB storage adapter created, wired into Supabase browser client, standalone boot gate added to `+layout.svelte` (Plan 08).
-- HOUSE-04: All loaders throw `error(503, ...)` on Supabase query failures (Plan 08).
-- AUTH-03: Logout form visible in both `+page.svelte` and `household/+page.svelte` (Plan 08).
-- Supabase env hardened: `validateSupabasePublicEnv` rejects placeholder anon keys and values shorter than 20 chars (Plan 08).
+**Human-confirmed 2026-04-27 (previously code-verified, now manually tested):**
+- Self-referential RLS policies replaced with `is_household_member` SECURITY DEFINER helper (Plan 09). ✓ Human confirmed.
+- Schema applied to target Supabase project — both RPC migrations applied, second push CURRENT (Plan 10). ✓ Human confirmed.
+- AUTH-04: IndexedDB storage adapter created, wired into Supabase browser client, standalone boot gate added to `+layout.svelte` (Plan 08). ✓ Human confirmed.
+- HOUSE-04: All loaders throw `error(503, ...)` on Supabase query failures (Plan 08). ✓ Human confirmed.
+- AUTH-03: Logout form visible in both `+page.svelte` and `household/+page.svelte` (Plan 08). ✓ Human confirmed.
+- Supabase env hardened: `validateSupabasePublicEnv` rejects placeholder anon keys and values shorter than 20 chars (Plan 08). ✓ Human confirmed.
 
 ---
 
 _Verified: 2026-04-26T13:29:00Z_
+_Human-confirmed: 2026-04-27 — all 9 truths confirmed by Ridwan (6 code-verified items + 3 device/live-session tests)_
 _Verifier: Claude (inline re-verification after Plan 08 execution)_
 _Mode: Re-verification after all Phase 1 plans complete (Plans 07, 08, 09, 10 executed)_
