@@ -1,16 +1,127 @@
 ---
 phase: 2
 reviewers: [codex]
-reviewed_at: 2026-04-28T00:00:00Z
+reviewed_at: 2026-04-28T08:00:00Z
 plans_reviewed:
   - 02-01-PLAN.md
   - 02-02-PLAN.md
   - 02-03-PLAN.md
   - 02-04-PLAN.md
-runtime_note: "Cycle 2. Claude Code (self) skipped per SELF_CLI=claude rule. Gemini, OpenCode, Qwen, Cursor not installed."
+runtime_note: "Cycle 3. Claude Code (self) skipped per SELF_CLI=claude rule. Gemini, OpenCode, Qwen, Cursor not installed."
 ---
 
 # Cross-AI Plan Review — Phase 2: Quick Add
+
+---
+
+## Cycle 3 (2026-04-28) — Post-Cycle-2-Replan Review
+
+> **Context:** This is the third review cycle. Cycle 2 found 1 HIGH and 2 PARTIALLY RESOLVED HIGHs after the first replan. The plans were updated again before this cycle. Codex re-reviews the Cycle 3 state.
+
+---
+
+## Codex Review (Cycle 3)
+
+### Summary
+
+The Cycle 3 plans are substantially stronger than the prior review state. The three Cycle 2 items are mostly addressed: `23505` duplicate handling is now planned at the server boundary, `saveNote` now checks exact update count and returns `fail(404)`, and `saveEdit`/`deleteExpense` now include `.eq('is_deleted', false)`. Overall, the phase plan should achieve the Quick Add goal, but there are still a few correctness gaps around idempotent UI reconciliation, WIB date display consistency, and UAT checks that do not match the updated behavior.
+
+### Strengths
+
+- Clear dependency structure: P01 foundation feeds P02/P03, and P04 gates the whole phase.
+- Good use of shared contracts: formatters, schemas, `ExpenseList`, and category constants reduce drift.
+- Server-side validation is explicit with Zod and keeps `household_id`/`created_by` sourced from `locals`.
+- The `23505` duplicate path is a real improvement over pure client debounce.
+- Edit/delete stale soft-delete protection is now explicitly planned with `.eq('is_deleted', false)`.
+- P04 correctly recognizes that iOS keyboard suppression, tap behavior, and bottom-sheet animation need human/device verification.
+
+### Concerns
+
+- **HIGH: Duplicate recovery UI has a client-side hole.** When `duplicate: true` is returned by `saveExpense`, the `use:enhance` handler in `+page.svelte` always skips prepending to the today list under the assumption the original save was already visible. In a real network retry case, the first insert may have succeeded server-side but the client never received the success response (e.g., network timeout). The recovered expense would not appear in the today list until a reload, leaving the user confused about whether their expense was saved.
+
+- **MEDIUM: `formatDisplayDate` does not pin `timeZone: 'Asia/Jakarta'`.** The project locks WIB for all display and date logic, but the `formatDisplayDate` formatter in 02-01-PLAN.md uses the runtime/browser timezone. History grouping uses WIB keys (via `toDateInputValue` which correctly pins WIB), while the date labels rendered by `formatDisplayDate` may reflect the browser's local timezone — creating off-by-one labels near UTC day boundaries for users outside WIB (or server-side render).
+
+- **MEDIUM: `saveNote` update does not filter `is_deleted=false`.** The update in 02-02-PLAN.md filters only by `expense_id`. RLS `expenses_creator_update` blocks cross-user writes, but a creator could still update the note on their own soft-deleted expense unless RLS explicitly blocks that state. The 0-rows defense catches many cases but not the case where the row IS accessible (creator-owned soft-deleted row).
+
+- **MEDIUM: P04 UAT has a stale saveNote verification instruction.** 02-04-PLAN.md step 14 still says cross-user `saveNote` should "silently return success" — but the current plan correctly returns `fail(404)` on 0 rows. This mismatch in the acceptance script could produce false approval (verifier expects silent success, gets a 404 error, declares a failure that isn't really a failure).
+
+- **MEDIUM: Duplicate-save UAT step is not a reliable test of `23505`.** After a normal success, `client_id` is regenerated and `amountStr` resets, so "tap another category rapidly" does not reliably exercise the `23505` path. The UAT needs a deterministic path (e.g., a controlled duplicate submission with the same hidden `client_id` value, or a test mock that forces the duplicate response).
+
+- **LOW: `/expenses` history has no limit or pagination.** Explicitly accepted as a known tradeoff, but mobile performance will degrade for long-lived households. Should be documented as a Phase 3+ candidate.
+
+- **LOW: Hardcoded `#D4C9B8` hex in category tile pressed/selected styles.** Both `CategoryGrid.svelte` and the edit page's category grid use `background: '#D4C9B8'` for the selected/pressed state, violating the project rule to use CSS custom properties only (no hex literals).
+
+### Suggestions
+
+- Change duplicate recovery in `use:enhance` to "prepend if not already present" rather than "never prepend when duplicate":
+  ```
+  if (!todayExpenses.some((e) => e.id === inserted.id)) {
+    todayExpenses = [inserted, ...todayExpenses];
+  }
+  ```
+  This handles the network-retry case where the client missed the original success response.
+
+- Add `timeZone: 'Asia/Jakarta'` to `formatDisplayDate` in `formatters.ts`, and add a test for a UTC timestamp that crosses the WIB date boundary (same test file as the `toDateInputValue` WIB tests).
+
+- Add `.eq('is_deleted', false)` to the `saveNote` UPDATE query in `+page.server.ts` to prevent note writes to soft-deleted expenses.
+
+- Update P04's saveNote RLS UAT instruction (step 14) to expect a controlled 404/error response, not "silent success", when targeting a tampered or cross-user expense_id.
+
+- Replace the duplicate-save manual UAT step with a deterministic test: reuse the same `client_id` value in a direct action test call and assert the `{ success: true, duplicate: true }` response, plus assert no duplicate row appears in the today list.
+
+- Add an explicit comment or acceptance note in 02-03-PLAN.md that the `/expenses` history has no pagination by design (MVP), with a Phase 3+ candidate note.
+
+- Extract the `#D4C9B8` hex value to a CSS custom property (e.g., `--color-pressed`) to comply with the project's CSS token rule.
+
+### Risk Assessment
+
+**Overall risk: MEDIUM.**
+
+The major Cycle 2 server-side risks are largely resolved — duplicate insert handling, saveNote privilege escalation, and edit/delete soft-delete guards. The remaining risks are narrower: duplicate recovery is not fully robust on the client side (network-retry gap), WIB date display is not consistently pinned in `formatDisplayDate`, and some P04 UAT instructions are stale enough to produce false approval or missed verification. Fixing these would move the plan close to LOW risk for Phase 2 MVP execution.
+
+---
+
+## Cycle 3 Consensus Summary
+
+Single reviewer invoked (Codex). Claude Code is the executing runtime and was excluded per the independence rule (`SELF_CLI=claude`). Other CLIs (Gemini, OpenCode, Qwen, Cursor) are not installed.
+
+### Agreed Strengths (Cycle 3)
+
+- Cycle 2's three HIGH/PARTIALLY-RESOLVED concerns are addressed at the server layer: `23505` duplicate recovery, `saveNote` 0-rows `fail(404)`, and `saveEdit`/`deleteExpense` update-side `is_deleted=false` filter.
+- Shared component and utility contracts (formatters, schemas, ExpenseList) prevent implementation drift between P02 and P03.
+- Security-critical patterns consistently enforced: `household_id` from `locals`, RLS as backstop, Zod validation on all action inputs.
+- Wave-0-first sequencing with RED test scaffolds remains intact and correct.
+- P04 human UAT gate correctly identifies behaviors that cannot be verified in jsdom.
+
+### Agreed Concerns (Cycle 3)
+
+1. **(HIGH) Duplicate recovery UI hole — network retry case.** The `use:enhance` handler skips prepending when `duplicate: true`, assuming the original expense is already visible. A network timeout before the first success response would leave the recovered expense invisible until reload. **Status: NEW — not raised in prior cycles.**
+
+2. **(MEDIUM) `formatDisplayDate` timezone not pinned to WIB.** History date labels may show incorrect dates for users/environments not in UTC+7. **Status: NEW.**
+
+3. **(MEDIUM) `saveNote` missing `is_deleted=false` filter.** The update can write to a creator's own soft-deleted row (RLS doesn't block same-creator writes). **Status: NEW.**
+
+4. **(MEDIUM) P04 UAT saveNote instruction is stale** — expects silent success where the implementation returns `fail(404)`. **Status: NEW.**
+
+5. **(MEDIUM) Duplicate-save UAT step is unreliable** — the normal post-save flow regenerates `client_id`, so rapid taps don't exercise `23505`. **Status: NEW.**
+
+### Divergent Views
+
+N/A — Single reviewer all cycles.
+
+### Reviewer Notes for /gsd-plan-phase --reviews (Cycle 3)
+
+1. **Duplicate recovery UI (HIGH):** In `+page.svelte` `use:enhance`, replace the `duplicate: true` branch with an idempotency-safe prepend: check `todayExpenses.some((e) => e.id === inserted.id)` before prepending. This makes duplicate recovery work correctly for both the double-tap case (already visible, no-op) and the network-retry case (not yet visible, prepend).
+
+2. **`formatDisplayDate` timezone:** Add `timeZone: 'Asia/Jakarta'` to the `toLocaleDateString` call in `formatters.ts`. Update `formatters.test.ts` to include a cross-midnight UTC/WIB test for `formatDisplayDate`.
+
+3. **`saveNote` `is_deleted=false` guard:** Add `.eq('is_deleted', false)` to the `saveNote` UPDATE chain in `+page.server.ts`, matching the pattern already used in `saveEdit` and `deleteExpense`.
+
+4. **P04 UAT step 14 correction:** Update the saveNote privilege escalation instruction to say: cross-user `saveNote` should return a 404/error response (not silent success), because the implementation now has the 0-rows defense. The verifier should look for the error toast, not absence of note change.
+
+5. **Duplicate-save UAT determinism:** Add a unit test (or update `quick-add.test.ts`) that exercises the `23505` path directly: mock the Supabase `insert` to return `code: '23505'`, mock the subsequent `select` to return the existing row, and assert the action returns `{ success: true, duplicate: true, expense }`.
+
+6. **CSS token for pressed state:** Extract `#D4C9B8` to `--color-pressed` in `app.css` and reference it in `CategoryGrid.svelte` and the edit page category grid.
 
 ---
 
