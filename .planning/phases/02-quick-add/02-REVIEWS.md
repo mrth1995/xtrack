@@ -1,16 +1,97 @@
 ---
 phase: 2
 reviewers: [codex]
-reviewed_at: 2026-04-28T08:00:00Z
+reviewed_at: 2026-04-28T11:22:40Z
 plans_reviewed:
   - 02-01-PLAN.md
   - 02-02-PLAN.md
   - 02-03-PLAN.md
   - 02-04-PLAN.md
-runtime_note: "Cycle 3. Claude Code (self) skipped per SELF_CLI=claude rule. Gemini, OpenCode, Qwen, Cursor not installed."
+runtime_note: "Cycle 4. Claude Code (self) skipped per SELF_CLI=claude rule. Gemini, OpenCode, Qwen, Cursor not installed."
 ---
 
 # Cross-AI Plan Review — Phase 2: Quick Add
+
+---
+
+## Cycle 4 (2026-04-28) — Post-Cycle-3-Replan Review
+
+> **Context:** This is the fourth review cycle. Cycle 3 found 1 HIGH and 4 MEDIUM concerns; the plans were updated to address all 6 items. Codex re-reviews the Cycle 4 state to verify convergence.
+
+---
+
+## Codex Review (Cycle 4)
+
+### Summary
+
+Cycle 4 is mostly converged. All six Cycle 3 concerns are addressed in the updated plan text and embedded code samples. I would not block on the original Cycle 3 items anymore, but I found a few new consistency and implementation risks that should be cleaned up before execution.
+
+### Cycle 3 Resolution Verification
+
+1. **FULLY RESOLVED: Duplicate recovery UI hole** — `02-02-PLAN.md` now uses `todayExpenses.some((e) => e.id === inserted.id)` before prepending, and explicitly avoids using `duplicate: true` as the sole guard.
+
+2. **FULLY RESOLVED: `formatDisplayDate` WIB timezone not pinned** — `formatDisplayDate` now includes `timeZone: 'Asia/Jakarta'`, and the formatter test includes the `2026-04-26T22:30:00Z` → `27 Apr` cross-midnight case.
+
+3. **FULLY RESOLVED: `saveNote` missing `is_deleted=false` filter** — The planned update chain is `.eq('id', expense_id).eq('is_deleted', false)`, with tests updated for the second chained `eq`.
+
+4. **FULLY RESOLVED: P04 UAT saveNote instruction stale** — Step 14 now expects `fail(404)` / error toast, not silent success.
+
+5. **FULLY RESOLVED: Duplicate-save UAT step unreliable** — `quick-add.test.ts` now includes a deterministic mocked `23505` path test.
+
+6. **FULLY RESOLVED: Hardcoded `#D4C9B8` in component files** — The plan extracts `--color-pressed` into `src/app.css`, and component/edit page checks require `var(--color-pressed)` with zero hardcoded hex literals.
+
+### New Concerns
+
+- **HIGH: Hidden form submission may race Svelte state updates.** In `02-02-PLAN.md`, `onCategoryTap` assigns `pendingCategory` / `pendingAmount` and immediately calls `saveFormRef?.requestSubmit()` on lines 1038-1045. `onSaveNote` does the same with `pendingNote` on lines 1057-1064. Since DOM updates from state changes may not be flushed before `requestSubmit()`, the hidden inputs can submit stale values. Add `import { tick } from 'svelte'`, make these handlers `async`, and `await tick()` before `requestSubmit()`, or avoid DOM-bound hidden state by constructing/submitting current values directly.
+
+- **MEDIUM: Duplicate recovery fetch can return a soft-deleted row.** The `23505` recovery fetch filters by `client_id` and `household_id`, but not `is_deleted=false` (`02-02-PLAN.md` lines 794-799). A rare stale retry after deletion could return a deleted expense and reinsert it into the visible client list. Add `.eq('is_deleted', false)` to the recovery fetch or explicitly handle deleted duplicates as a non-display success/error.
+
+- **LOW: UAT validation-failure instruction contradicts empty-amount behavior.** Step 20 says tapping a category with amount `0` should do nothing (`02-04-PLAN.md` lines 193-194), but Step 21 says submitting amount `0` by tapping a category should show an error toast (line 202). The implementation returns early on zero amount, so Step 21 should be removed or rewritten as a unit/server-action validation check.
+
+- **LOW: Acceptance grep for `is_deleted` count is internally inconsistent.** `02-02-PLAN.md` line 901 expects `grep -c "is_deleted', false"` to return `1`, but the same acceptance block later expects at least `2` for load + saveNote on line 909. The exact-count check should be changed to `at least 2` or scoped to the specific query.
+
+### Suggestions
+
+- Add `await tick()` before both hidden-form submissions (`onCategoryTap` and `onSaveNote`), add `is_deleted=false` to duplicate recovery fetch, and clean up the two stale/contradictory verification lines. These are small plan edits but prevent execution churn.
+
+### Risk Assessment
+
+**Overall risk: MEDIUM.** The Cycle 3 concerns are resolved, but the hidden-form state flush race is execution-critical because it can break the primary quick-add save path despite tests passing if mocks do not model DOM timing.
+
+---
+
+## Cycle 4 Consensus Summary
+
+Single reviewer invoked (Codex). Claude Code is the executing runtime and was excluded per the independence rule (`SELF_CLI=claude`). Other CLIs (Gemini, OpenCode, Qwen, Cursor) are not installed.
+
+### Agreed Strengths (Cycle 4)
+
+- All six Cycle 3 concerns are fully resolved: idempotency-safe duplicate recovery UI, WIB-pinned `formatDisplayDate`, `saveNote` `is_deleted=false` guard, stale P04 UAT step corrected, deterministic 23505 unit test added, CSS token extraction completed.
+- Plan convergence is strong: server-side correctness, security patterns, and test scaffolding are all solid.
+
+### Agreed Concerns (Cycle 4)
+
+1. **(HIGH) Svelte state/DOM race in `onCategoryTap` and `onSaveNote`.** Both handlers assign `$state` variables and immediately call `requestSubmit()` without `await tick()`, risking stale hidden input values being submitted. **Status: NEW — not raised in prior cycles.**
+
+2. **(MEDIUM) Duplicate recovery fetch missing `is_deleted=false` filter.** The `23505` path recovery `select` in `saveExpense` does not guard against returning a soft-deleted row, which would reinsert a deleted expense into the visible client list. **Status: NEW.**
+
+3. **(LOW) UAT steps 20/21 contradiction on zero-amount behavior.** Step 20 says zero amount does nothing; Step 21 implies an error toast. **Status: NEW.**
+
+4. **(LOW) Grep count inconsistency in 02-02 acceptance criteria.** Line 901 expects count `1`; line 909 expects `at least 2` for the same file/pattern. **Status: NEW.**
+
+### Divergent Views
+
+N/A — Single reviewer all cycles.
+
+### Reviewer Notes for /gsd-plan-phase --reviews (Cycle 4)
+
+1. **Svelte tick() before requestSubmit() (HIGH):** In `02-02-PLAN.md`, update `onCategoryTap` and `onSaveNote` to be `async` functions that `await tick()` (imported from `'svelte'`) before calling `saveFormRef?.requestSubmit()` / `noteFormRef?.requestSubmit()`. This ensures Svelte flushes state to DOM (hidden inputs) before the form is submitted.
+
+2. **Recovery fetch `is_deleted=false` (MEDIUM):** In `02-02-PLAN.md` `saveExpense` `23505` recovery block, add `.eq('is_deleted', false)` to the `select` query filtering by `client_id` + `household_id`. If no non-deleted row is found, either return a clear error or proceed to the generic 500 path rather than reinserting a deleted expense.
+
+3. **UAT step 21 correction (LOW):** In `02-04-PLAN.md`, either remove Step 21 (since zero amount returns early client-side before any server call) or rewrite it as a unit test assertion rather than a manual UAT step.
+
+4. **Grep count fix (LOW):** In `02-02-PLAN.md` acceptance criteria, change the `grep -c "is_deleted', false"` expected count from `1` to `at least 2` (or use `grep -c` with `>= 2` wording) to match the actual number of occurrences after the `saveNote` fix.
 
 ---
 
