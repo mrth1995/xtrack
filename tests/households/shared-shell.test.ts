@@ -339,13 +339,15 @@ describe('Banner copy — locked instruction text', () => {
 // ---------------------------------------------------------------------------
 
 describe('Signed-in shell — logout control', () => {
-	it('renders a visible POST logout control in the signed-in home shell', () => {
+	it('renders the gear menu that contains a visible POST logout control', () => {
 		const shellSource = readFileSync(resolve('src/routes/(app)/+page.svelte'), 'utf8');
+		const gearMenuSource = readFileSync(resolve('src/lib/components/GearMenu.svelte'), 'utf8');
 
-		expect(shellSource).toContain('method="POST"');
-		expect(shellSource).toContain('action="/logout"');
-		expect(shellSource).toContain('type="submit"');
-		expect(shellSource).toContain('Log out');
+		expect(shellSource).toContain('GearMenu');
+		expect(gearMenuSource).toContain('method="POST"');
+		expect(gearMenuSource).toContain('action="/logout"');
+		expect(gearMenuSource).toContain('type="submit"');
+		expect(gearMenuSource).toContain('Log out');
 	});
 });
 
@@ -354,19 +356,9 @@ describe('Signed-in shell — logout control', () => {
 // ---------------------------------------------------------------------------
 
 describe('Shell loader — explicit 503 error on Supabase failures (Plan 01-08)', () => {
-	it('home shell loader throws error(503) for household query failures', () => {
+	it('home quick-add loader throws error(503) for today expense query failures', () => {
 		const source = readFileSync(resolve('src/routes/(app)/+page.server.ts'), 'utf8');
-		expect(source).toContain("throw error(503, 'Could not load household data.')");
-	});
-
-	it('home shell loader throws error(503) for members query failures', () => {
-		const source = readFileSync(resolve('src/routes/(app)/+page.server.ts'), 'utf8');
-		expect(source).toContain("throw error(503, 'Could not load household members.')");
-	});
-
-	it('home shell loader throws error(503) for expenses query failures', () => {
-		const source = readFileSync(resolve('src/routes/(app)/+page.server.ts'), 'utf8');
-		expect(source).toContain("throw error(503, 'Could not load household expenses.')");
+		expect(source).toContain("throw error(503, 'Could not load expenses.')");
 	});
 
 	it('home shell loader imports error from @sveltejs/kit', () => {
