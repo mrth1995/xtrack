@@ -23,13 +23,19 @@
 
 	let showPassword = $state(false);
 	let submitting = $state(false);
+	let emailValue = $state('');
 
 	function setMode(next: 'login' | 'signup') {
 		_userSelectedMode = next;
 	}
 
 	const errors = $derived((form as { errors?: Record<string, string> } | null)?.errors ?? {});
-	const prefillEmail = $derived((form as { email?: string } | null)?.email ?? '');
+
+	// Sync server-echoed email (failed submission echoes the submitted address back)
+	$effect(() => {
+		const echoed = (form as { email?: string } | null)?.email ?? '';
+		if (echoed) emailValue = echoed;
+	});
 	const success = $derived((form as { success?: string } | null)?.success ?? '');
 	let authRedirectPending = $state(false);
 	let authRedirectError = $state('');
@@ -231,7 +237,7 @@
 					type="email"
 					autocomplete="email"
 					inputmode="email"
-					value={prefillEmail}
+					bind:value={emailValue}
 					aria-invalid={!!errors.email}
 					aria-describedby={errors.email ? 'email-error' : undefined}
 					class="w-full rounded-lg border px-4 text-base outline-none transition-colors focus:ring-2"

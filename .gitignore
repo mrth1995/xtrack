@@ -24,3 +24,7 @@ Thumbs.db
 *.swp
 *.swo
 .vscode/settings.json
+
+# Local agent/runtime state
+.claude/settings.local.json
+.claude/worktrees/
