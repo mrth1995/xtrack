@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const uuidShape = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
 /**
  * Canonical 7-preset category list per D-13 (CONTEXT.md).
  * Order matches the home-screen 3x3-1 grid layout (D-12):
@@ -29,13 +31,13 @@ export const saveExpenseSchema = z.object({
 	category: z.enum(VALID_CATEGORIES, {
 		message: 'Invalid category'
 	}),
-	client_id: z.string().uuid('Invalid client_id (must be a UUID)'),
+	client_id: z.string().regex(uuidShape, 'Invalid client_id (must be a UUID)'),
 	spent_at: z.string().datetime('spent_at must be an ISO 8601 datetime')
 });
 
 /** PATCH payload for the saveNote action (post-save bottom sheet). */
 export const saveNoteSchema = z.object({
-	expense_id: z.string().uuid('Invalid expense_id'),
+	expense_id: z.string().regex(uuidShape, 'Invalid expense_id'),
 	note: z.string().max(500, 'Note must be 500 characters or fewer').optional()
 });
 

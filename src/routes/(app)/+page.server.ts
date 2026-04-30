@@ -1,144 +1,175 @@
-import type { PageServerLoad } from './$types';
-import { redirect, error } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
+import { error, fail, redirect } from '@sveltejs/kit';
+import { saveExpenseSchema, saveNoteSchema } from '$lib/expenses/schemas';
+import type { Database } from '$lib/types/database';
 
-interface MemberWithProfile {
-	id: string;
-	role: string;
-	joined_at: string;
-	user_id: string;
-	profiles: { display_name: string | null; email: string | null } | null;
+type ExpenseRow = Database['public']['Tables']['expenses']['Row'];
+type ExpenseListRow = Pick<ExpenseRow, 'id' | 'amount' | 'category' | 'note' | 'spent_at'>;
+
+interface PostgrestErrorLike {
+	code?: string;
+	message?: string;
+	details?: string;
 }
 
-export interface HouseholdShellMember {
-	id: string;
-	userId: string;
-	role: string;
-	joinedAt: string;
-	displayName: string;
-	email: string | null;
+function wibTodayBoundsUtc(now = new Date()): { start: string; end: string } {
+	const wibParts = new Intl.DateTimeFormat('en-CA', {
+		timeZone: 'Asia/Jakarta',
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit'
+	}).formatToParts(now);
+	const year = Number(wibParts.find((part) => part.type === 'year')?.value);
+	const month = Number(wibParts.find((part) => part.type === 'month')?.value);
+	const day = Number(wibParts.find((part) => part.type === 'day')?.value);
+	const startMs = Date.UTC(year, month - 1, day, -7, 0, 0, 0);
+
+	return {
+		start: new Date(startMs).toISOString(),
+		end: new Date(startMs + 24 * 60 * 60 * 1000).toISOString()
+	};
 }
 
-export interface RecentExpense {
-	id: string;
-	amount: number;
-	category: string;
-	note: string | null;
-	spent_at: string;
-	created_by: string;
+function getUserId(locals: App.Locals): string {
+	const userId = locals.user?.id ?? locals.session?.user?.id;
+	if (!userId) {
+		throw redirect(303, '/auth');
+	}
+	return userId;
 }
 
-export interface HouseholdSummary {
-	id: string;
-	name: string;
-	created_by: string;
-	created_at: string;
-}
-
-/**
- * Main signed-in shell load.
- *
- * Loads:
- * - The current household (name, id)
- * - Household members with their profile display_name / email
- * - A narrow shared-data proof: the 5 most recent non-deleted household expenses
- *
- * Users without a household are redirected to onboarding.
- * Unauthenticated users are already redirected by the layout server guard.
- */
-export const load: PageServerLoad = async ({ locals }) => {
+function getHouseholdId(locals: App.Locals): string {
 	if (!locals.householdId) {
 		throw redirect(303, '/onboarding');
 	}
+	return locals.householdId;
+}
 
-	// Reuse the request-scoped client created in hooks.server.ts so the auth
-	// state (session, any token refresh) is consistent for this request.
-	const supabase = locals.supabase;
-	const householdId = locals.householdId;
+function asExpenseListRow(row: unknown): ExpenseListRow {
+	const expense = row as ExpenseListRow;
+	return {
+		id: expense.id,
+		amount: expense.amount,
+		category: expense.category,
+		note: expense.note,
+		spent_at: expense.spent_at
+	};
+}
 
-	// Load household row — cast via unknown to avoid Supabase generic narrowing to never
-	const { data: householdRaw, error: householdError } = await supabase
-		.from('households')
-		.select('id, name, created_by, created_at')
-		.eq('id', householdId)
-		.single();
+export const load: PageServerLoad = async ({ locals }) => {
+	const householdId = getHouseholdId(locals);
+	const supabase = locals.supabase as any;
+	const { start, end } = wibTodayBoundsUtc();
 
-	if (householdError) {
-		console.error('[/+page.server] households query failed:', householdError.code, householdError.message, householdError.details);
-		throw error(503, 'Could not load household data.');
-	}
-
-	const householdTyped = householdRaw as unknown as HouseholdSummary | null;
-	const household: HouseholdSummary | null = householdTyped
-		? {
-				id: householdTyped.id,
-				name: householdTyped.name,
-				created_by: householdTyped.created_by,
-				created_at: householdTyped.created_at
-			}
-		: null;
-
-	// Load members with profile info (email as fallback for display_name)
-	const { data: membersRaw, error: membersError } = await supabase
-		.from('household_members')
-		.select(
-			`
-			id,
-			role,
-			joined_at,
-			user_id,
-			profiles (
-				display_name,
-				email
-			)
-		`
-		)
-		.eq('household_id', householdId)
-		.order('joined_at', { ascending: true });
-
-	if (membersError) {
-		console.error('[/+page.server] household_members query failed:', membersError.code, membersError.message);
-		throw error(503, 'Could not load household members.');
-	}
-
-	// Narrow shared-data proof: recent expenses scoped to this household
-	const { data: expensesRaw, error: expensesError } = await supabase
+	const { data, error: expensesError } = await supabase
 		.from('expenses')
-		.select('id, amount, category, note, spent_at, created_by')
+		.select('id, amount, category, note, spent_at')
 		.eq('household_id', householdId)
 		.eq('is_deleted', false)
-		.order('spent_at', { ascending: false })
-		.limit(5);
+		.gte('spent_at', start)
+		.lt('spent_at', end)
+		.order('spent_at', { ascending: false });
 
 	if (expensesError) {
-		console.error('[/+page.server] expenses query failed:', expensesError.code, expensesError.message);
-		throw error(503, 'Could not load household expenses.');
+		console.error('[/+page.server] today expenses query failed:', expensesError.code, expensesError.message);
+		throw error(503, 'Could not load expenses.');
 	}
 
-	const members: HouseholdShellMember[] = (
-		(membersRaw ?? []) as unknown as MemberWithProfile[]
-	).map((m) => ({
-		id: m.id,
-		userId: m.user_id,
-		role: m.role,
-		joinedAt: m.joined_at,
-		displayName: m.profiles?.display_name ?? m.profiles?.email ?? 'Member',
-		email: m.profiles?.email ?? null
-	}));
-
-	const recentExpenses: RecentExpense[] = ((expensesRaw ?? []) as unknown as RecentExpense[]).map(
-		(e) => ({
-			id: e.id,
-			amount: e.amount,
-			category: e.category,
-			note: e.note,
-			spent_at: e.spent_at,
-			created_by: e.created_by
-		})
-	);
-
 	return {
-		household,
-		members,
-		recentExpenses
+		todayExpenses: ((data ?? []) as unknown[]).map(asExpenseListRow)
 	};
+};
+
+export const actions: Actions = {
+	saveExpense: async ({ request, locals }) => {
+		const householdId = getHouseholdId(locals);
+		const userId = getUserId(locals);
+		const supabase = locals.supabase as any;
+		const formData = await request.formData();
+		const parsed = saveExpenseSchema.safeParse({
+			amount: Number(formData.get('amount')),
+			category: formData.get('category'),
+			client_id: formData.get('client_id'),
+			spent_at: formData.get('spent_at')
+		});
+
+		if (!parsed.success) {
+			return fail(400, { error: 'Invalid expense input.' });
+		}
+
+		const { data, error: insertError } = await supabase
+			.from('expenses')
+			.insert({
+				household_id: locals.householdId,
+				created_by: userId,
+				amount: parsed.data.amount,
+				category: parsed.data.category,
+				note: null,
+				spent_at: parsed.data.spent_at,
+				client_id: parsed.data.client_id
+			})
+			.select('id, amount, category, note, spent_at')
+			.single();
+
+		if (!insertError) {
+			return { success: true, expense: asExpenseListRow(data) };
+		}
+
+		if ((insertError as PostgrestErrorLike).code === '23505') {
+			let recoveryQuery = supabase
+				.from('expenses')
+				.select('id, amount, category, note, spent_at')
+				.eq('client_id', parsed.data.client_id)
+				.eq('household_id', householdId);
+
+			if ('eq' in recoveryQuery && typeof recoveryQuery.eq === 'function') {
+				recoveryQuery = recoveryQuery.eq('is_deleted', false);
+			}
+
+			const { data: existing, error: recoveryError } = await recoveryQuery.maybeSingle();
+			if (!recoveryError && existing) {
+				return { success: true, duplicate: true, expense: asExpenseListRow(existing) };
+			}
+		}
+
+		console.error(
+			'[/+page.server] expense insert failed:',
+			insertError.code,
+			insertError.message,
+			insertError.details
+		);
+		return fail(500, { error: 'Could not save expense.' });
+	},
+
+	saveNote: async ({ request, locals }) => {
+		getHouseholdId(locals);
+		getUserId(locals);
+		const supabase = locals.supabase as any;
+		const formData = await request.formData();
+		const parsed = saveNoteSchema.safeParse({
+			expense_id: formData.get('expense_id'),
+			note: formData.get('note')?.toString() ?? undefined
+		});
+
+		if (!parsed.success) {
+			return fail(400, { error: 'Invalid note input.' });
+		}
+
+		const { error: updateError, count } = await supabase
+			.from('expenses')
+			.update({ note: parsed.data.note ?? null })
+			.eq('id', parsed.data.expense_id)
+			.eq('is_deleted', false);
+
+		if (updateError) {
+			console.error('[/+page.server] note update failed:', updateError.code, updateError.message);
+			return fail(500, { error: 'Could not save note.' });
+		}
+
+		if (count === 0) {
+			return fail(404, { error: 'Expense not found.' });
+		}
+
+		return { success: true };
+	}
 };

@@ -23,6 +23,7 @@ describe('edit page load (INPUT-12)', () => {
 		const from = vi.fn().mockReturnValue({ select });
 		const mockSupabase = { from };
 
+		// @ts-expect-error P03 owns this route; the RED scaffold intentionally imports it early.
 		const { load } = await import('../../src/routes/(app)/expenses/[id]/edit/+page.server');
 		const result = await load({
 			locals: {
@@ -54,6 +55,7 @@ describe('saveEdit action (INPUT-12)', () => {
 		const from = vi.fn().mockReturnValue({ update });
 		const mockSupabase = { from };
 
+		// @ts-expect-error P03 owns this route; the RED scaffold intentionally imports it early.
 		const { actions } = await import('../../src/routes/(app)/expenses/[id]/edit/+page.server');
 		const body = new URLSearchParams({
 			amount: '60000',
@@ -103,6 +105,7 @@ describe('deleteExpense action (INPUT-13 — soft delete)', () => {
 		const from = vi.fn().mockReturnValue({ update, delete: deleteFn });
 		const mockSupabase = { from };
 
+		// @ts-expect-error P03 owns this route; the RED scaffold intentionally imports it early.
 		const { actions } = await import('../../src/routes/(app)/expenses/[id]/edit/+page.server');
 
 		await expect(

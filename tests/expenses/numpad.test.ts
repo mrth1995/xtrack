@@ -6,7 +6,6 @@ import { render, fireEvent } from '@testing-library/svelte';
 
 describe('Numpad component (INPUT-02, INPUT-06, INPUT-07)', () => {
 	beforeEach(() => {
-		vi.resetModules();
 		vi.clearAllMocks();
 	});
 
@@ -14,9 +13,7 @@ describe('Numpad component (INPUT-02, INPUT-06, INPUT-07)', () => {
 		const { default: Numpad } = await import('$lib/components/Numpad.svelte');
 		const onDigit = vi.fn();
 		const onBackspace = vi.fn();
-		const { getByText, getByLabelText } = render(Numpad, {
-			props: { amountStr: '', onDigit, onBackspace }
-		});
+		const { getByText, getByLabelText } = render(Numpad, { amountStr: '', onDigit, onBackspace });
 		// Digits 0-9
 		for (let d = 0; d <= 9; d++) {
 			expect(getByText(String(d))).toBeInTheDocument();
@@ -31,9 +28,7 @@ describe('Numpad component (INPUT-02, INPUT-06, INPUT-07)', () => {
 		const { default: Numpad } = await import('$lib/components/Numpad.svelte');
 		const onDigit = vi.fn();
 		const onBackspace = vi.fn();
-		const { getByText } = render(Numpad, {
-			props: { amountStr: '', onDigit, onBackspace }
-		});
+		const { getByText } = render(Numpad, { amountStr: '', onDigit, onBackspace });
 		await fireEvent.click(getByText('5'));
 		expect(onDigit).toHaveBeenCalledWith('5');
 	});
@@ -42,9 +37,7 @@ describe('Numpad component (INPUT-02, INPUT-06, INPUT-07)', () => {
 		const { default: Numpad } = await import('$lib/components/Numpad.svelte');
 		const onDigit = vi.fn();
 		const onBackspace = vi.fn();
-		const { getByText } = render(Numpad, {
-			props: { amountStr: '', onDigit, onBackspace }
-		});
+		const { getByText } = render(Numpad, { amountStr: '', onDigit, onBackspace });
 		await fireEvent.click(getByText('000'));
 		expect(onDigit).toHaveBeenCalledWith('000');
 	});
@@ -53,9 +46,7 @@ describe('Numpad component (INPUT-02, INPUT-06, INPUT-07)', () => {
 		const { default: Numpad } = await import('$lib/components/Numpad.svelte');
 		const onDigit = vi.fn();
 		const onBackspace = vi.fn();
-		const { getByLabelText } = render(Numpad, {
-			props: { amountStr: '5', onDigit, onBackspace }
-		});
+		const { getByLabelText } = render(Numpad, { amountStr: '5', onDigit, onBackspace });
 		await fireEvent.click(getByLabelText('Delete last digit'));
 		expect(onBackspace).toHaveBeenCalled();
 	});
