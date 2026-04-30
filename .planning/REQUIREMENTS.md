@@ -52,8 +52,8 @@
 
 ### Core Input — Edit & Delete
 
-- [ ] **INPUT-12**: User can edit the amount, category, note, and date of a logged expense
-- [ ] **INPUT-13**: User can delete a logged expense (soft delete — `is_deleted: true`)
+- [x] **INPUT-12**: User can edit the amount, category, note, and date of a logged expense
+- [x] **INPUT-13**: User can delete a logged expense (soft delete — `is_deleted: true`)
 
 ### Core Input — Note
 
@@ -147,8 +147,8 @@
 | INPUT-05 | Phase 2 | Complete |
 | INPUT-06 | Phase 2 | Complete |
 | INPUT-07 | Phase 2 | Complete |
-| INPUT-12 | Phase 2 | Pending |
-| INPUT-13 | Phase 2 | Pending |
+| INPUT-12 | Phase 2 | Complete |
+| INPUT-13 | Phase 2 | Complete |
 | INPUT-14 | Phase 2 | Complete |
 | INPUT-08 | Phase 3 | Pending |
 | INPUT-09 | Phase 3 | Pending |
