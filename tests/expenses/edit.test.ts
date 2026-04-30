@@ -23,7 +23,6 @@ describe('edit page load (INPUT-12)', () => {
 		const from = vi.fn().mockReturnValue({ select });
 		const mockSupabase = { from };
 
-		// @ts-expect-error P03 owns this route; the RED scaffold intentionally imports it early.
 		const { load } = await import('../../src/routes/(app)/expenses/[id]/edit/+page.server');
 		const result = await load({
 			locals: {
@@ -50,12 +49,13 @@ describe('saveEdit action (INPUT-12)', () => {
 	});
 
 	it('updates amount, category, note, spent_at and redirects', async () => {
-		const eq = vi.fn().mockResolvedValue({ data: null, error: null });
+		const eq = vi.fn();
+		eq.mockReturnValueOnce({ eq });
+		eq.mockResolvedValueOnce({ data: null, error: null });
 		const update = vi.fn().mockReturnValue({ eq });
 		const from = vi.fn().mockReturnValue({ update });
 		const mockSupabase = { from };
 
-		// @ts-expect-error P03 owns this route; the RED scaffold intentionally imports it early.
 		const { actions } = await import('../../src/routes/(app)/expenses/[id]/edit/+page.server');
 		const body = new URLSearchParams({
 			amount: '60000',
@@ -89,6 +89,7 @@ describe('saveEdit action (INPUT-12)', () => {
 			spent_at: '2026-04-26T12:00:00.000Z'
 		});
 		expect(eq).toHaveBeenCalledWith('id', 'exp-1');
+		expect(eq).toHaveBeenCalledWith('is_deleted', false);
 	});
 });
 
@@ -99,13 +100,14 @@ describe('deleteExpense action (INPUT-13 — soft delete)', () => {
 	});
 
 	it('sets is_deleted=true (NOT physical delete) and redirects to /', async () => {
-		const eq = vi.fn().mockResolvedValue({ data: null, error: null });
+		const eq = vi.fn();
+		eq.mockReturnValueOnce({ eq });
+		eq.mockResolvedValueOnce({ data: null, error: null });
 		const update = vi.fn().mockReturnValue({ eq });
 		const deleteFn = vi.fn();
 		const from = vi.fn().mockReturnValue({ update, delete: deleteFn });
 		const mockSupabase = { from };
 
-		// @ts-expect-error P03 owns this route; the RED scaffold intentionally imports it early.
 		const { actions } = await import('../../src/routes/(app)/expenses/[id]/edit/+page.server');
 
 		await expect(
@@ -124,6 +126,7 @@ describe('deleteExpense action (INPUT-13 — soft delete)', () => {
 		// Soft delete: must use UPDATE with is_deleted=true, NEVER .delete()
 		expect(update).toHaveBeenCalledWith({ is_deleted: true });
 		expect(eq).toHaveBeenCalledWith('id', 'exp-1');
+		expect(eq).toHaveBeenCalledWith('is_deleted', false);
 		expect(deleteFn).not.toHaveBeenCalled();
 	});
 });
