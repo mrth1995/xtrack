@@ -35,13 +35,13 @@
 
 ### Core Input — Quick Add
 
-- [ ] **INPUT-01**: Quick Add numpad is the default home screen (no dashboard first)
-- [ ] **INPUT-02**: Numpad shows digits 0–9, "000" key, and backspace; no decimal key
-- [ ] **INPUT-03**: Amounts display with IDR dot-separator formatting in real time (e.g. 54.000)
-- [ ] **INPUT-04**: Category tile row is shown below the numpad (7 presets: Food, Transport, Entertainment, Utilities, Shopping, Health, Others)
-- [ ] **INPUT-05**: Tapping a category tile saves the expense and returns to fresh numpad (category tap = save)
-- [ ] **INPUT-06**: Save action is debounced (500ms) to prevent duplicate expenses from double-tap
-- [ ] **INPUT-07**: Each expense entry is assigned a UUID (`client_id`) at numpad-open time
+- [x] **INPUT-01**: Quick Add numpad is the default home screen (no dashboard first)
+- [x] **INPUT-02**: Numpad shows digits 0–9, "000" key, and backspace; no decimal key
+- [x] **INPUT-03**: Amounts display with IDR dot-separator formatting in real time (e.g. 54.000)
+- [x] **INPUT-04**: Category tile row is shown below the numpad (7 presets: Food, Transport, Entertainment, Utilities, Shopping, Health, Others)
+- [x] **INPUT-05**: Tapping a category tile saves the expense and returns to fresh numpad (category tap = save)
+- [x] **INPUT-06**: Save action is debounced (500ms) to prevent duplicate expenses from double-tap
+- [x] **INPUT-07**: Each expense entry is assigned a UUID (`client_id`) at numpad-open time
 
 ### Core Input — Offline
 
@@ -57,7 +57,7 @@
 
 ### Core Input — Note
 
-- [ ] **INPUT-14**: User can add an optional free-text note to an expense (revealed post-save, not required in the quick-add flow)
+- [x] **INPUT-14**: User can add an optional free-text note to an expense (revealed post-save, not required in the quick-add flow)
 
 ### Sync
 
@@ -140,16 +140,16 @@
 | HOUSE-04 | Phase 1 | Pending |
 | INFRA-01 | Phase 1 | Pending |
 | PWA-02 | Phase 1 | Pending |
-| INPUT-01 | Phase 2 | Pending |
-| INPUT-02 | Phase 2 | Pending |
-| INPUT-03 | Phase 2 | Pending |
-| INPUT-04 | Phase 2 | Pending |
-| INPUT-05 | Phase 2 | Pending |
-| INPUT-06 | Phase 2 | Pending |
-| INPUT-07 | Phase 2 | Pending |
+| INPUT-01 | Phase 2 | Complete |
+| INPUT-02 | Phase 2 | Complete |
+| INPUT-03 | Phase 2 | Complete |
+| INPUT-04 | Phase 2 | Complete |
+| INPUT-05 | Phase 2 | Complete |
+| INPUT-06 | Phase 2 | Complete |
+| INPUT-07 | Phase 2 | Complete |
 | INPUT-12 | Phase 2 | Pending |
 | INPUT-13 | Phase 2 | Pending |
-| INPUT-14 | Phase 2 | Pending |
+| INPUT-14 | Phase 2 | Complete |
 | INPUT-08 | Phase 3 | Pending |
 | INPUT-09 | Phase 3 | Pending |
 | INPUT-10 | Phase 3 | Pending |

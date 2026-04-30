@@ -13,7 +13,7 @@ xtrack v1.0 ships as a mobile-installable PWA for Indonesian households to track
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Auth, household model, DB schema, RLS, INFRA keep-alive, and iOS install guidance
-- [ ] **Phase 2: Quick Add** - Core write path: numpad, categories, expense list, edit/delete, notes, IDR formatting
+- [ ] **Phase 2: Quick Add** - Core write path: numpad, categories, expense list, edit/delete, notes, IDR formatting (in progress)
 - [ ] **Phase 3: Offline Tolerance** - IndexedDB queue, sync flush, IN_FLIGHT recovery, idempotent server inserts
 - [ ] **Phase 4: PWA + Realtime** - Service worker, web app manifest, full PWA install, Supabase Realtime household sync
 - [ ] **Phase 5: Reports** - Payday cycle config, WIB-aware cycle boundaries, donut chart, cycle header
@@ -57,8 +57,8 @@ Plans:
   5. User can delete a saved expense; it disappears from the list
 **Plans**: 4 plans
 Plans:
-- [ ] 02-01-PLAN.md — Foundation utilities: IDR/date formatters, Zod schemas, shared ExpenseList, Wave 0 RED test scaffolds
-- [ ] 02-02-PLAN.md — Quick Add home page: numpad + category grid + today list + note bottom sheet + gear menu + saveExpense/saveNote actions
+- [x] 02-01-PLAN.md — Foundation utilities: IDR/date formatters, Zod schemas, shared ExpenseList, Wave 0 RED test scaffolds
+- [x] 02-02-PLAN.md — Quick Add home page: numpad + category grid + today list + note bottom sheet + gear menu + saveExpense/saveNote actions
 - [ ] 02-03-PLAN.md — Expense history (/expenses) and edit/delete (/expenses/[id]/edit) with WIB date round-trip and soft delete
 - [ ] 02-04-PLAN.md — Phase 2 acceptance gate: human UAT walk-through of all INPUT-01 through INPUT-14 behaviours
 **UI hint**: yes
@@ -119,7 +119,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete | 2026-04-25 |
-| 2. Quick Add | 0/4 | Not started | - |
+| 2. Quick Add | 1/4 | In progress | - |
 | 3. Offline Tolerance | 0/TBD | Not started | - |
 | 4. PWA + Realtime | 0/TBD | Not started | - |
 | 5. Reports | 0/TBD | Not started | - |

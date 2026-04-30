@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-04-28T11:45:30.354Z"
-last_activity: 2026-04-28 -- Phase 2 planning complete
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-04-30T13:57:02.538Z"
+last_activity: 2026-04-30
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 14
-  completed_plans: 10
-  percent: 71
+  completed_plans: 12
+  percent: 86
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Logging an expense must feel effortless — from "I just spent money" to saved in at most a few taps, no menu diving, no form filling.
-**Current focus:** Phase --phase — 01
+**Current focus:** Phase 02 — quick-add
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
+Phase: 02 (quick-add) — EXECUTING
+Plan: 3 of 4
 Status: Ready to execute
-Last activity: 2026-04-28 -- Phase 2 planning complete
+Last activity: 2026-04-30
 
-Progress: [██████████] 100%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [██████████] 100%
 
 *Updated after each plan completion*
 | Phase 01-foundation P07 | 4 min | 5 tasks | 12 files |
+| Phase 02-quick-add P02 | 11 min | 1 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Recent decisions affecting current work:
 - Stack confirmed: SvelteKit 2.x + Svelte 5 + Tailwind 4 + Supabase + Cloudflare Pages + vite-plugin-pwa.
 - Phase 01 Plan 07: Unknown invite lookup RPC errors surface migration/setup guidance instead of invalid-code copy.
 - Phase 01 Plan 07: Invite reuse now lives in get_or_create_active_household_invite so RLS-scoped client reads cannot silently replace active codes.
+- [Phase 02-quick-add]: Quick Add is the authenticated home screen; household navigation moved into GearMenu. — Phase 02 Plan 02 replaces the old household overview with numpad-first expense entry.
+- [Phase 02-quick-add]: Quick Add optimistic prepend is keyed by expense id, not the duplicate flag. — The id check handles both double-tap and network retry recovery paths without duplicating visible rows.
 
 ### Pending Todos
 
@@ -86,9 +89,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-27T10:40:59.629Z
-Stopped at: Phase 2 UI-SPEC approved
-Resume file: .planning/phases/02-quick-add/02-UI-SPEC.md
+Last session: 2026-04-30T13:56:23.085Z
+Stopped at: Completed 02-02-PLAN.md
+Resume file: None
 
 ### Quick Tasks Completed
 
