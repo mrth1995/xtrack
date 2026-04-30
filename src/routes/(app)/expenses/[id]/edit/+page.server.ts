@@ -116,7 +116,7 @@ export const actions: Actions = {
 	/**
 	 * deleteExpense - INPUT-13: soft delete (UPDATE is_deleted = true).
 	 *
-	 * NEVER use `.delete()`. RLS enforces creator-only update; the DB layer
+	 * NEVER use physical deletes. RLS enforces creator-only update; the DB layer
 	 * is the final guard against horizontal privilege escalation.
 	 */
 	deleteExpense: async ({ locals, params }) => {
