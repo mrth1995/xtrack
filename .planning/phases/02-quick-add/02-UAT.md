@@ -1,21 +1,17 @@
 ---
-status: testing
+status: complete
 phase: 02-quick-add
 source:
   - .planning/phases/02-quick-add/02-01-SUMMARY.md
   - .planning/phases/02-quick-add/02-02-SUMMARY.md
   - .planning/phases/02-quick-add/02-03-SUMMARY.md
 started: 2026-04-30T14:25:14Z
-updated: 2026-04-30T14:30:19Z
+updated: 2026-05-01T12:37:58Z
 ---
 
 ## Current Test
 
-number: 7
-name: Full History Navigation And Grouping
-expected: |
-  Tapping View all history navigates to /expenses. The page shows non-deleted household expenses grouped by WIB date, newest first, and each row links to its edit page.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -45,30 +41,30 @@ result: pass
 
 ### 7. Full History Navigation And Grouping
 expected: Tapping View all history navigates to /expenses. The page shows non-deleted household expenses grouped by WIB date, newest first, and each row links to its edit page.
-result: [pending]
+result: pass
 
 ### 8. Edit Expense Fields Persist
 expected: On /expenses/{id}/edit, the form shows editable amount, category, note, and date fields. Changing them and saving redirects back to /expenses, where the updated amount/category/note/date are visible.
-result: [pending]
+result: pass
 
 ### 9. Delete Expense Is Soft And Hidden From Lists
 expected: The edit page requires a two-step delete confirmation. After confirming delete, the app redirects to / and the expense disappears from both Today's list and /expenses history.
-result: [pending]
+result: pass
 
 ### 10. Gear Menu Navigation And Logout
 expected: The gear menu opens from the Quick Add home screen and contains Invite member, Household details, and Log out. Invite member opens /settings/invite, Household details opens /household, and Log out signs the user out.
-result: [pending]
+result: pass
 
 ### 11. Edge Cases And Idempotency Checks
 expected: Zero amount category taps do nothing, the amount display refuses values above 99.999.999, a current-time expense appears in Today using WIB boundaries, duplicate client_id recovery works without duplicate list rows, and note/edit/delete updates are guarded against stale or deleted expenses.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 11
-passed: 6
+passed: 11
 issues: 0
-pending: 5
+pending: 0
 skipped: 0
 blocked: 0
 
