@@ -31,6 +31,9 @@ Logging an expense must feel effortless — from the moment the user thinks "I j
 - [x] Installable PWA that works on iOS with home-screen icon — IndexedDB session persistence and standalone boot gate implemented. *Validated in Phase 01: foundation*
 - [x] Cloud account sign-in so data survives device changes — email/password auth with Supabase session management. *Validated in Phase 01: foundation*
 - [x] Shared household: one person creates, invites partner via short code; both see the same expense stream — household model, RLS, invite RPCs all applied to live Supabase. *Validated in Phase 01: foundation*
+- [x] Manual quick-add is the authenticated home screen — custom numpad, category tiles, optimistic save, duplicate-save defenses, and Today list are implemented. *Validated in Phase 02: quick-add*
+- [x] Optional free-text note per expense — post-save note sheet supports save and skip flows. *Validated in Phase 02: quick-add*
+- [x] Edit and delete logged expenses — full history, edit form, WIB date round-trip, and soft delete are implemented. *Validated in Phase 02: quick-add*
 
 ### Active
 
@@ -115,4 +118,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-26 — Phase 01 complete: foundation scaffold, auth, household model, PWA session persistence*
+*Last updated: 2026-05-01 — Phase 02 complete: Quick Add home flow, optional notes, history, edit, and soft delete*
