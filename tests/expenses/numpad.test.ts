@@ -1,9 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 
-// The Numpad component does not yet exist. P02 will create it at
-// src/lib/components/Numpad.svelte. These tests pin its contract.
-
 describe('Numpad component (INPUT-02, INPUT-06, INPUT-07)', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -61,10 +58,4 @@ describe('Quick-add page client-side state (INPUT-06 debounce, INPUT-07 client_i
 	it('two consecutive crypto.randomUUID() calls produce different UUIDs (INPUT-07)', () => {
 		expect(crypto.randomUUID()).not.toBe(crypto.randomUUID());
 	});
-
-	// NOTE: The 500ms debounce (INPUT-06) is a behavioural assertion against the
-	// home page composition (P02). It is verified by the quick-add.test.ts
-	// "saveExpense action only fires once per debounce window" assertion below.
-	// Kept here as a marker so VALIDATION.md task 02-01-02 has a hit.
-	it.todo('debounce window prevents two saves within 500ms — covered by quick-add.test.ts');
 });
