@@ -60,7 +60,7 @@ Plans:
 - [x] 02-01-PLAN.md — Foundation utilities: IDR/date formatters, Zod schemas, shared ExpenseList, Wave 0 RED test scaffolds
 - [x] 02-02-PLAN.md — Quick Add home page: numpad + category grid + today list + note bottom sheet + gear menu + saveExpense/saveNote actions
 - [x] 02-03-PLAN.md — Expense history (/expenses) and edit/delete (/expenses/[id]/edit) with WIB date round-trip and soft delete
-- [ ] 02-04-PLAN.md — Phase 2 acceptance gate: human UAT walk-through of all INPUT-01 through INPUT-14 behaviours
+- [x] 02-04-PLAN.md — Phase 2 acceptance gate: human UAT walk-through of all INPUT-01 through INPUT-14 behaviours
 **UI hint**: yes
 
 ### Phase 3: Offline Tolerance
