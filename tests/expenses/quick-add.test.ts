@@ -242,7 +242,9 @@ describe('saveNote action (INPUT-14)', () => {
 
 		expect(result).toMatchObject({ success: true });
 		expect(from).toHaveBeenCalledWith('expenses');
-		expect(update).toHaveBeenCalledWith(expect.objectContaining({ note: 'lunch with team' }));
+		expect(update).toHaveBeenCalledWith(expect.objectContaining({ note: 'lunch with team' }), {
+			count: 'exact'
+		});
 		// First .eq() is for expense_id; second .eq() is for is_deleted=false filter (Cycle 3)
 		expect(eqFirst).toHaveBeenCalledWith('id', '00000000-0000-0000-0000-000000000001');
 		expect(eqSecond).toHaveBeenCalledWith('is_deleted', false);

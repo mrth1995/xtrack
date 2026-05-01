@@ -157,7 +157,7 @@ export const actions: Actions = {
 
 		const { error: updateError, count } = await supabase
 			.from('expenses')
-			.update({ note: parsed.data.note ?? null })
+			.update({ note: parsed.data.note ?? null }, { count: 'exact' })
 			.eq('id', parsed.data.expense_id)
 			.eq('is_deleted', false);
 
