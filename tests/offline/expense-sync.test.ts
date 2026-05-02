@@ -14,8 +14,11 @@ describe('offline expense sync orchestration (INPUT-09)', () => {
 
 	it('installs online and visibilitychange triggers and flushes when visible', async () => {
 		const { installExpenseSyncTriggers } = await import(syncModulePath);
-		const flushExpenseQueue = vi.fn().mockResolvedValue({ flushed: 0 });
-		const cleanup = installExpenseSyncTriggers({ flushExpenseQueue });
+		const context = { householdId, sessionReady: true };
+		const flushExpenseQueue = vi
+			.fn()
+			.mockResolvedValue({ attempted: 0, synced: 0, failed: 0, paused: false });
+		const cleanup = installExpenseSyncTriggers(() => context, flushExpenseQueue);
 
 		window.dispatchEvent(new Event('online'));
 		expect(flushExpenseQueue).toHaveBeenCalledTimes(1);
@@ -39,7 +42,7 @@ describe('offline expense sync orchestration (INPUT-09)', () => {
 		expect(flushExpenseQueue).toHaveBeenCalledTimes(2);
 	});
 
-	it('classifies auth, RLS, and household mismatch failures as failed without hot-loop retries', async () => {
+	it('classifies auth, household access, and household mismatch failures without hot-loop retries', async () => {
 		const { clearExpenseQueueForTests, getQueuedExpenses, queueExpense } = await import(
 			queueModulePath
 		);
@@ -55,31 +58,83 @@ describe('offline expense sync orchestration (INPUT-09)', () => {
 			household_id: householdId
 		});
 
-		expect(classifySyncError({ status: 401 })).toBe('auth');
-		expect(classifySyncError({ status: 403 })).toBe('authorization');
-		expect(classifySyncError({ code: '42501', message: 'new row violates row-level security' })).toBe(
-			'authorization'
-		);
+		expect(classifySyncError({ syncErrorCode: 'auth' })).toBe('auth');
+		expect(classifySyncError({ syncErrorCode: 'household_access' })).toBe('household_access');
 		expect(
 			classifySyncError({
-				code: 'HOUSEHOLD_MISMATCH',
-				message: 'Queued household no longer matches current household'
+				syncErrorCode: 'household_mismatch'
 			})
 		).toBe('household_mismatch');
 
-		const saveExpense = vi.fn().mockRejectedValue({ status: 403, message: 'RLS denied' });
-		await expect(flushExpenseQueue({ saveExpense, now: () => Date.parse(spentAt) })).resolves.toEqual({
-			flushed: 0,
-			failed: 1
+		const fetcher = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					type: 'failure',
+					status: 403,
+					data: {
+						error: 'Check household access before retrying.',
+						syncErrorCode: 'household_access'
+					}
+				}),
+				{ status: 403, headers: { 'content-type': 'application/json' } }
+			)
+		);
+		await expect(
+			flushExpenseQueue({ householdId, sessionReady: true, fetcher })
+		).resolves.toMatchObject({
+			attempted: 1,
+			synced: 0,
+			failed: 1,
+			paused: false
 		});
-		expect(saveExpense).toHaveBeenCalledTimes(1);
+		expect(fetcher).toHaveBeenCalledTimes(1);
 
 		const rows = await getQueuedExpenses();
 		expect(rows).toEqual([
 			expect.objectContaining({
 				client_id: clientId,
 				sync_status: 'failed',
-				last_error: expect.stringContaining('RLS denied'),
+				last_error: 'Check household access before retrying.',
+				retry_count: 1
+			})
+		]);
+	});
+
+	it('returns network failures to queued for a later lifecycle-trigger retry', async () => {
+		const { clearExpenseQueueForTests, getQueuedExpenses, queueExpense } = await import(
+			queueModulePath
+		);
+		const { classifySyncError, flushExpenseQueue } = await import(syncModulePath);
+
+		await clearExpenseQueueForTests();
+		await queueExpense({
+			amount: 54000,
+			category: 'Food',
+			note: null,
+			spent_at: spentAt,
+			client_id: clientId,
+			household_id: householdId
+		});
+
+		const fetcher = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+		expect(classifySyncError(new TypeError('Failed to fetch'))).toBe('network');
+
+		await expect(
+			flushExpenseQueue({ householdId, sessionReady: true, fetcher })
+		).resolves.toMatchObject({
+			attempted: 1,
+			synced: 0,
+			failed: 0,
+			paused: false
+		});
+		expect(fetcher).toHaveBeenCalledTimes(1);
+
+		const rows = await getQueuedExpenses();
+		expect(rows).toEqual([
+			expect.objectContaining({
+				client_id: clientId,
+				sync_status: 'queued',
+				last_error: null,
 				retry_count: 1
 			})
 		]);
