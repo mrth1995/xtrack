@@ -1,7 +1,10 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import ExpenseList from '$lib/components/ExpenseList.svelte';
 	import { toDateInputValue, formatDisplayDate } from '$lib/expenses/formatters';
+	import { getQueuedExpenses } from '$lib/offline/expense-queue';
+	import type { QueuedExpense, SyncStatus } from '$lib/offline/types';
 
 	interface Props {
 		data: PageData;
@@ -9,15 +12,65 @@
 
 	let { data }: Props = $props();
 
+	type ExpenseItem = (typeof data.expenses)[number] & {
+		client_id?: string;
+		server_id?: string;
+		household_id?: string;
+		sync_status?: SyncStatus;
+		sync_error?: string | null;
+	};
+
 	interface ExpenseGroup {
 		dateKey: string; // YYYY-MM-DD in WIB
 		label: string; // e.g. "26 Apr" via formatDisplayDate
-		expenses: typeof data.expenses;
+		expenses: ExpenseItem[];
 	}
 
+	let visibleExpenses = $state<ExpenseItem[]>(
+		data.expenses.map((expense) => ({ ...expense, server_id: expense.id }))
+	);
+
+	function queuedToExpenseItem(expense: QueuedExpense): ExpenseItem {
+		return {
+			id: expense.client_id,
+			client_id: expense.client_id,
+			server_id: expense.server_id,
+			household_id: expense.household_id,
+			amount: expense.amount,
+			category: expense.category,
+			note: expense.note,
+			spent_at: expense.spent_at,
+			sync_status: expense.sync_status,
+			sync_error: expense.last_error
+		};
+	}
+
+	function mergeExpenses(localRows: ExpenseItem[]): void {
+		const merged = new Map<string, ExpenseItem>();
+		for (const expense of [...localRows, ...visibleExpenses]) {
+			const key = expense.client_id ?? expense.id;
+			if (!merged.has(key)) {
+				merged.set(key, expense);
+			}
+		}
+		visibleExpenses = Array.from(merged.values()).sort((a, b) =>
+			b.spent_at.localeCompare(a.spent_at)
+		);
+	}
+
+	onMount(() => {
+		void (async () => {
+			const queued = await getQueuedExpenses();
+			const localRows = queued
+				.filter((expense) => expense.household_id === data.householdId)
+				.map(queuedToExpenseItem);
+			mergeExpenses(localRows);
+		})();
+	});
+
 	const grouped = $derived.by<ExpenseGroup[]>(() => {
-		const map = new Map<string, typeof data.expenses>();
-		for (const e of data.expenses) {
+		const map = new Map<string, ExpenseItem[]>();
+		for (const e of visibleExpenses) {
 			const key = toDateInputValue(e.spent_at);
 			const existing = map.get(key);
 			if (existing) existing.push(e);
@@ -46,7 +99,7 @@
 			All expenses
 		</h1>
 
-		{#if data.expenses.length === 0}
+		{#if visibleExpenses.length === 0}
 			<div
 				class="rounded-xl border p-4"
 				style="border-color: var(--color-surface); background: var(--color-surface);"

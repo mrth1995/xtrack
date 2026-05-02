@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 
 export interface ExpenseListItem {
 	id: string;
+	client_id: string;
 	amount: number;
 	category: string;
 	note: string | null;
@@ -30,7 +31,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	const { data: rawList, error: queryError } = await supabase
 		.from('expenses')
-		.select('id, amount, category, note, spent_at')
+		.select('id, amount, category, note, spent_at, client_id')
 		.eq('household_id', householdId)
 		.eq('is_deleted', false)
 		.order('spent_at', { ascending: false });
@@ -47,6 +48,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const expenses: ExpenseListItem[] = ((rawList ?? []) as unknown as ExpenseListItem[]).map(
 		(e) => ({
 			id: e.id,
+			client_id: e.client_id,
 			amount: e.amount,
 			category: e.category,
 			note: e.note,
