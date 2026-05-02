@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-05-02T13:51:01.420Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-05-02T14:00:58.280Z"
 last_activity: 2026-05-02
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 19
-  completed_plans: 17
-  percent: 89
+  completed_plans: 18
+  percent: 95
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-01)
 ## Current Position
 
 Phase: 03 (offline-tolerance) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-02
 
-Progress: [█████████░] 89%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [█████████░] 89%
 | Phase 03-offline-tolerance P01 | 3 min | 3 tasks | 7 files |
 | Phase 03-offline-tolerance P03 | 372s | 3 tasks | 5 files |
 | Phase 03-offline-tolerance P02 | checkpointed | 3 tasks | 5 files |
+| Phase 03-offline-tolerance P04 | 414s | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,9 @@ Recent decisions affecting current work:
 - [Phase 03-02]: Move retry idempotency into a Supabase RPC so browser retries cannot create duplicate expenses.
 - [Phase 03-02]: Use server-derived householdId as RPC authority and treat queued household mismatches as controlled sync failures.
 - [Phase 03-02]: Record the schema push as user-confirmed external work during checkpoint resume rather than executor-run CLI output.
+- [Phase 03-04]: Keep the server-first Quick Add path, but queue browser offline state and SvelteKit enhance network errors locally.
+- [Phase 03-04]: Expose householdId through protected app layout data so client queue writes and flush triggers use server-resolved household context.
+- [Phase 03-04]: Use client_id as the edit route id for never-synced rows while persisted rows continue to use server id and soft delete.
 
 ### Pending Todos
 
@@ -102,8 +106,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-02T13:51:01.414Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-05-02T14:00:58.274Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None
 
 ### Quick Tasks Completed
