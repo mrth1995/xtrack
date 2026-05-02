@@ -4,6 +4,7 @@ node_modules/
 # SvelteKit build artifacts
 .svelte-kit/
 build/
+test-results/
 
 # Cloudflare / deployment
 .vercel/

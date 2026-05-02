@@ -18,6 +18,21 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const supabase = createServerClient(event);
 	event.locals.supabase = supabase;
 
+	const isLocalE2eFixture =
+		process.env.PLAYWRIGHT_E2E_FIXTURE === '1' &&
+		(event.url.hostname === '127.0.0.1' || event.url.hostname === 'localhost');
+
+	if (isLocalE2eFixture) {
+		const fixtureSession = {
+			user: { id: 'playwright-user', aud: 'authenticated', role: 'authenticated' }
+		} as NonNullable<App.Locals['session']>;
+		event.locals.session = fixtureSession;
+		event.locals.user = fixtureSession.user;
+		event.locals.householdId = 'playwright-household';
+
+		return resolve(event);
+	}
+
 	const {
 		data: { session }
 	} = await supabase.auth.getSession();

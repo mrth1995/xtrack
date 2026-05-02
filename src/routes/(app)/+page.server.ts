@@ -83,8 +83,31 @@ function asExpenseListRow(row: unknown): ExpenseListRow {
 	};
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
+function isLocalE2eFixture(url: URL): boolean {
+	return (
+		process.env.PLAYWRIGHT_E2E_FIXTURE === '1' &&
+		(url.hostname === '127.0.0.1' || url.hostname === 'localhost')
+	);
+}
+
+function e2eFixtureExpense(formData: FormData): ExpenseListRow {
+	const clientId = String(formData.get('client_id') ?? crypto.randomUUID());
+	return {
+		id: `playwright-${clientId}`,
+		amount: Number(formData.get('amount')),
+		category: String(formData.get('category') ?? 'Food'),
+		note: formData.get('note')?.toString() || null,
+		spent_at: String(formData.get('spent_at') ?? new Date().toISOString()),
+		client_id: clientId
+	};
+}
+
+export const load: PageServerLoad = async ({ locals, url }) => {
 	const householdId = getHouseholdId(locals);
+	if (isLocalE2eFixture(url)) {
+		return { todayExpenses: [] };
+	}
+
 	const supabase = locals.supabase as any;
 	const { start, end } = wibTodayBoundsUtc();
 
@@ -108,7 +131,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	saveExpense: async ({ request, locals }) => {
+	saveExpense: async ({ request, locals, url }) => {
 		const householdId = getHouseholdId(locals);
 		const supabase = locals.supabase as any;
 		const formData = await request.formData();
@@ -140,6 +163,10 @@ export const actions: Actions = {
 
 		if (!parsed.success) {
 			return fail(400, { error: 'Invalid expense input.' });
+		}
+
+		if (isLocalE2eFixture(url)) {
+			return { success: true, expense: e2eFixtureExpense(formData) };
 		}
 
 		const { data, error: rpcError } = await supabase.rpc('save_expense_idempotent', {

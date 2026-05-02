@@ -14,6 +14,7 @@
 		queueExpense,
 		updateQueuedExpense
 	} from '$lib/offline/expense-queue';
+	import { flushExpenseQueue } from '$lib/offline/expense-sync';
 	import type { QueuedExpense, SyncStatus } from '$lib/offline/types';
 
 	interface Props {
@@ -44,7 +45,7 @@
 	let errorTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const initialTodayExpenses = data.todayExpenses;
-	let todayExpenses = $state(initialTodayExpenses);
+	let todayExpenses = $state<SavedExpense[]>(initialTodayExpenses);
 
 	let saveFormRef: HTMLFormElement | undefined = $state();
 	let pendingCategory = $state<string | null>(null);
@@ -95,6 +96,27 @@
 		);
 	}
 
+	async function refreshLocalSyncStatuses(): Promise<void> {
+		const queued = await getQueuedExpenses();
+		const queuedIds = new Set(queued.map((row) => row.client_id));
+		todayExpenses = todayExpenses.map((expense) => {
+			if (!expense.sync_status || queuedIds.has(expense.client_id ?? expense.id)) {
+				return expense;
+			}
+
+			return { ...expense, sync_status: undefined };
+		});
+	}
+
+	async function flushAndRefreshLocalRows(): Promise<void> {
+		if (!data.householdId) {
+			return;
+		}
+
+		await flushExpenseQueue({ sessionReady: true, householdId: data.householdId });
+		await refreshLocalSyncStatuses();
+	}
+
 	async function queuePendingExpense(formData: FormData): Promise<boolean> {
 		const householdId = data.householdId;
 		if (!householdId) {
@@ -140,6 +162,21 @@
 	}
 
 	onMount(() => {
+		let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+		const scheduleFlushAndRefresh = () => {
+			if (refreshTimer) {
+				clearTimeout(refreshTimer);
+			}
+			refreshTimer = setTimeout(() => {
+				void flushAndRefreshLocalRows();
+			}, 50);
+		};
+		const onVisible = () => {
+			if (document.visibilityState === 'visible') {
+				scheduleFlushAndRefresh();
+			}
+		};
+
 		void (async () => {
 			const queued = await getQueuedExpenses();
 			const visible = queued
@@ -147,6 +184,17 @@
 				.map(queuedToSavedExpense);
 			mergeTodayExpenses(visible);
 		})();
+
+		window.addEventListener('online', scheduleFlushAndRefresh);
+		document.addEventListener('visibilitychange', onVisible);
+
+		return () => {
+			if (refreshTimer) {
+				clearTimeout(refreshTimer);
+			}
+			window.removeEventListener('online', scheduleFlushAndRefresh);
+			document.removeEventListener('visibilitychange', onVisible);
+		};
 	});
 
 	function appendDigit(digit: string) {
@@ -221,7 +269,12 @@
 		</div>
 
 		<div class="mb-6 text-center">
-			<p class="text-[48px] font-semibold leading-none" style="color: {displayColor};" aria-live="polite">
+			<p
+				class="text-[48px] font-semibold leading-none"
+				style="color: {displayColor};"
+				aria-label="Amount"
+				aria-live="polite"
+			>
 				{displayAmount}
 			</p>
 		</div>
@@ -262,7 +315,19 @@
 		method="POST"
 		action="?/saveExpense"
 		style="display: none;"
-		use:enhance={() => {
+		use:enhance={({ formData, cancel }) => {
+			if (navigator.onLine === false) {
+				cancel();
+				void (async () => {
+					await queuePendingExpense(formData);
+					setTimeout(() => {
+						debounced = false;
+						pressedCategory = null;
+					}, 500);
+				})();
+				return;
+			}
+
 			return async ({ result, formData }) => {
 				if (
 					result.type === 'success' &&

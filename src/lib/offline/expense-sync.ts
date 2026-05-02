@@ -105,9 +105,58 @@ function createRequestBody(row: QueuedExpense): URLSearchParams {
 	return body;
 }
 
+function parseDevalueData(serialized: string): unknown {
+	const values = JSON.parse(serialized) as unknown[];
+	const revive = (value: unknown): unknown => {
+		if (typeof value === 'number') {
+			return revive(values[value]);
+		}
+		if (Array.isArray(value)) {
+			return value.map(revive);
+		}
+		if (value && typeof value === 'object') {
+			return Object.fromEntries(
+				Object.entries(value).map(([key, nested]) => [key, revive(nested)])
+			);
+		}
+
+		return value;
+	};
+
+	return revive(values[0]);
+}
+
+function parseSvelteKitActionEnvelope(text: string): ActionFailurePayload | null {
+	const envelope = JSON.parse(text) as { type?: string; data?: unknown; error?: { message?: string } };
+	if (envelope.type !== 'success' && envelope.type !== 'failure' && envelope.type !== 'error') {
+		return null;
+	}
+
+	if (envelope.type === 'error') {
+		return { syncErrorCode: 'unknown', error: envelope.error?.message ?? 'Could not sync expense.' };
+	}
+
+	if (typeof envelope.data === 'string') {
+		return asPayload(parseDevalueData(envelope.data));
+	}
+
+	return asPayload(envelope.data);
+}
+
 async function parseActionResponse(response: Response): Promise<ActionFailurePayload> {
+	const text = await response.text();
+
 	try {
-		return asPayload(await response.json());
+		const svelteKitPayload = parseSvelteKitActionEnvelope(text);
+		if (svelteKitPayload) {
+			return svelteKitPayload;
+		}
+	} catch {
+		// Unit tests and non-SvelteKit callers may provide plain JSON responses.
+	}
+
+	try {
+		return asPayload(JSON.parse(text));
 	} catch {
 		return {
 			syncErrorCode: 'network',
