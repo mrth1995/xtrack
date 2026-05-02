@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { enhance } from '$app/forms';
 	import type { PageData } from './$types';
 	import InstallGuidanceBanner from '$lib/components/InstallGuidanceBanner.svelte';
@@ -8,7 +8,13 @@
 	import NoteSheet from '$lib/components/NoteSheet.svelte';
 	import GearMenu from '$lib/components/GearMenu.svelte';
 	import ExpenseList from '$lib/components/ExpenseList.svelte';
-	import { formatNumpad } from '$lib/expenses/formatters';
+	import { formatNumpad, toDateInputValue } from '$lib/expenses/formatters';
+	import {
+		getQueuedExpenses,
+		queueExpense,
+		updateQueuedExpense
+	} from '$lib/offline/expense-queue';
+	import type { QueuedExpense, SyncStatus } from '$lib/offline/types';
 
 	interface Props {
 		data: PageData;
@@ -21,6 +27,9 @@
 		note: string | null;
 		spent_at: string;
 		client_id: string;
+		sync_status?: SyncStatus;
+		household_id?: string;
+		server_id?: string;
 	}
 
 	let { data }: Props = $props();
@@ -54,6 +63,91 @@
 			lastError = null;
 		}, 4000);
 	}
+
+	function isToday(spentAt: string): boolean {
+		return toDateInputValue(spentAt) === toDateInputValue(new Date().toISOString());
+	}
+
+	function queuedToSavedExpense(expense: QueuedExpense): SavedExpense {
+		return {
+			id: expense.client_id,
+			client_id: expense.client_id,
+			server_id: expense.server_id,
+			household_id: expense.household_id,
+			amount: expense.amount,
+			category: expense.category,
+			note: expense.note,
+			spent_at: expense.spent_at,
+			sync_status: expense.sync_status
+		};
+	}
+
+	function mergeTodayExpenses(rows: SavedExpense[]): void {
+		const merged = new Map<string, SavedExpense>();
+		for (const row of [...rows, ...todayExpenses]) {
+			const key = row.client_id ?? row.id;
+			if (!merged.has(key)) {
+				merged.set(key, row);
+			}
+		}
+		todayExpenses = Array.from(merged.values()).sort((a, b) =>
+			b.spent_at.localeCompare(a.spent_at)
+		);
+	}
+
+	async function queuePendingExpense(formData: FormData): Promise<boolean> {
+		const householdId = data.householdId;
+		if (!householdId) {
+			showError("Couldn't save. Check your connection and try again.");
+			return false;
+		}
+
+		const amount = Number(formData.get('amount'));
+		const category = formData.get('category');
+		const spentAt = formData.get('spent_at');
+		const currentClientId = formData.get('client_id');
+
+		if (
+			!Number.isFinite(amount) ||
+			amount <= 0 ||
+			typeof category !== 'string' ||
+			typeof spentAt !== 'string' ||
+			typeof currentClientId !== 'string'
+		) {
+			showError("Couldn't save. Check your connection and try again.");
+			return false;
+		}
+
+		const queued = await queueExpense({
+			amount,
+			category: category as QueuedExpense['category'],
+			note: null,
+			spent_at: spentAt,
+			client_id: currentClientId,
+			household_id: data.householdId ?? householdId
+		});
+		const visible = queuedToSavedExpense({ ...queued, sync_status: 'queued' });
+		savedExpense = {
+			id: queued.client_id,
+			category: queued.category,
+			amount: queued.amount
+		};
+		mergeTodayExpenses([visible]);
+		amountStr = '';
+		clientId = crypto.randomUUID();
+		sheetOpen = true;
+		return true;
+	}
+
+	onMount(() => {
+		void (async () => {
+			const queued = await getQueuedExpenses();
+			const visible = queued
+				.filter((row) => row.household_id === data.householdId && isToday(row.spent_at))
+				.map(queuedToSavedExpense);
+			mergeTodayExpenses(visible);
+		})();
+	});
 
 	function appendDigit(digit: string) {
 		const next = amountStr === '0' ? digit : amountStr + digit;
@@ -101,6 +195,18 @@
 		}
 
 		pendingNote = note;
+		const localQueued = await updateQueuedExpense(savedExpense.id, { note });
+		if (localQueued) {
+			todayExpenses = todayExpenses.map((e) =>
+				e.client_id === localQueued.client_id || e.id === localQueued.client_id
+					? { ...e, note: localQueued.note, sync_status: 'queued' }
+					: e
+			);
+			sheetOpen = false;
+			savedExpense = null;
+			return;
+		}
+
 		await tick();
 		noteFormRef?.requestSubmit();
 	}
@@ -157,7 +263,7 @@
 		action="?/saveExpense"
 		style="display: none;"
 		use:enhance={() => {
-			return async ({ result }) => {
+			return async ({ result, formData }) => {
 				if (
 					result.type === 'success' &&
 					result.data &&
@@ -173,12 +279,14 @@
 					};
 
 					if (!todayExpenses.some((e) => e.id === inserted.id)) {
-						todayExpenses = [inserted, ...todayExpenses];
+						mergeTodayExpenses([inserted]);
 					}
 
 					amountStr = '';
 					clientId = crypto.randomUUID();
 					sheetOpen = true;
+				} else if (result.type === 'error' || navigator.onLine === false) {
+					await queuePendingExpense(formData);
 				} else {
 					showError("Couldn't save. Check your connection and try again.");
 				}

@@ -4,10 +4,15 @@
 
 	export interface ExpenseListItem {
 		id: string;
+		client_id?: string;
+		server_id?: string;
+		household_id?: string;
 		amount: number;
 		category: string;
 		note: string | null;
 		spent_at: string;
+		sync_status?: 'queued' | 'syncing' | 'failed';
+		sync_error?: string | null;
 	}
 
 	interface Props {
@@ -18,6 +23,17 @@
 
 	function emojiFor(category: string): string {
 		return CATEGORY_META[category as Category]?.emoji ?? '';
+	}
+
+	function statusLabel(status: ExpenseListItem['sync_status']): string | null {
+		if (status === 'queued') return 'Waiting';
+		if (status === 'syncing') return 'Saving';
+		if (status === 'failed') return "Couldn't sync";
+		return null;
+	}
+
+	function statusColor(status: ExpenseListItem['sync_status']): string {
+		return status === 'failed' ? 'var(--color-destructive)' : 'var(--color-muted)';
 	}
 </script>
 
@@ -35,10 +51,11 @@
 	</div>
 {:else}
 	<ul class="flex flex-col">
-		{#each expenses as expense (expense.id)}
+		{#each expenses as expense (expense.server_id ?? expense.id ?? expense.client_id)}
 			<li>
-				<a
-					href="/expenses/{expense.id}/edit"
+				<svelte:element
+					this={expense.sync_status === 'syncing' ? 'div' : 'a'}
+					href={expense.sync_status === 'syncing' ? undefined : `/expenses/${expense.id}/edit`}
 					class="flex min-h-[48px] items-center justify-between border-b py-3"
 					style="border-color: var(--color-surface); touch-action: manipulation;"
 				>
@@ -50,6 +67,11 @@
 						{#if expense.note}
 							<span class="text-sm" style="color: var(--color-muted)">{expense.note}</span>
 						{/if}
+						{#if statusLabel(expense.sync_status)}
+							<span class="text-sm font-semibold" style="color: {statusColor(expense.sync_status)}">
+								{statusLabel(expense.sync_status)}
+							</span>
+						{/if}
 					</div>
 					<div class="flex flex-col items-end">
 						<span class="text-base font-semibold" style="color: var(--color-foreground)">
@@ -59,7 +81,7 @@
 							{formatDisplayDate(expense.spent_at)}
 						</span>
 					</div>
-				</a>
+				</svelte:element>
 			</li>
 		{/each}
 	</ul>
