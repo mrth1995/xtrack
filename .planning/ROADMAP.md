@@ -74,7 +74,7 @@ Plans:
 **Plans**: 5 plans
 Plans:
 - [x] 03-01-PLAN.md — Wave 0 validation scaffolding for offline queue, sync, and browser flow
-- [ ] 03-02-PLAN.md — Idempotent Supabase RPC, save action wiring, and blocking schema push
+- [x] 03-02-PLAN.md — Idempotent Supabase RPC, save action wiring, and blocking schema push
 - [x] 03-03-PLAN.md — IndexedDB queue storage, stale syncing recovery, and flush orchestration
 - [ ] 03-04-PLAN.md — Quick Add, status rows, history, lifecycle triggers, and queued edit/delete wiring
 - [ ] 03-05-PLAN.md — Browser offline acceptance gate and Phase 03 UAT evidence
@@ -126,7 +126,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete | 2026-04-25 |
 | 2. Quick Add | 1/4 | In progress | - |
-| 3. Offline Tolerance | 2/5 | In progress | - |
+| 3. Offline Tolerance | 3/5 | In progress | - |
 | 4. PWA + Realtime | 0/TBD | Not started | - |
 | 5. Reports | 0/TBD | Not started | - |
 | 6. Secondary Input | 0/TBD | Not started | - |

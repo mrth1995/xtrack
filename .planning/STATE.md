@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-05-02T13:47:02.725Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-05-02T13:51:01.420Z"
 last_activity: 2026-05-02
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 19
-  completed_plans: 16
-  percent: 84
+  completed_plans: 17
+  percent: 89
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-01)
 ## Current Position
 
 Phase: 03 (offline-tolerance) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-05-02
 
-Progress: [████████░░] 84%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [████████░░] 84%
 | Phase 02-quick-add P03 | 5 min | 3 tasks | 5 files |
 | Phase 03-offline-tolerance P01 | 3 min | 3 tasks | 7 files |
 | Phase 03-offline-tolerance P03 | 372s | 3 tasks | 5 files |
+| Phase 03-offline-tolerance P02 | checkpointed | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Recent decisions affecting current work:
 - [Phase 03-01]: Keep offline unit tests RED by importing future contracts without adding implementation stubs in Wave 0. — Later plans must satisfy the queue and sync contracts rather than inherit placeholder runtime modules.
 - [Phase 03-03]: Use explicit syncErrorCode mapping for offline flush failures. — Auth, household access, and household mismatch rows remain local failed rows and are not retried inside the same flush loop.
 - [Phase 03-03]: Treat browser offline state and thrown fetch failures as network failures. — Rows return to queued so normal lifecycle triggers can retry without data loss.
+- [Phase 03-02]: Move retry idempotency into a Supabase RPC so browser retries cannot create duplicate expenses.
+- [Phase 03-02]: Use server-derived householdId as RPC authority and treat queued household mismatches as controlled sync failures.
+- [Phase 03-02]: Record the schema push as user-confirmed external work during checkpoint resume rather than executor-run CLI output.
 
 ### Pending Todos
 
@@ -94,12 +98,12 @@ None yet.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| Out-of-scope verification blocker | `npm run check` fails in `src/routes/(app)/+page.svelte` because `SavedExpense` lacks required `client_id` when prepending into `todayExpenses`; this appears tied to prior 03-02 work and was not modified in 03-03. | Open | Phase 03 Plan 03 |
+| Out-of-scope verification blocker | `npm run check` failed in `src/routes/(app)/+page.svelte` because `SavedExpense` lacked required `client_id` when prepending into `todayExpenses`; resolved during 03-02 Task 3 resume verification. | Resolved | Phase 03 Plan 03 |
 
 ## Session Continuity
 
-Last session: 2026-05-02T13:47:02.719Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-05-02T13:51:01.414Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
 
 ### Quick Tasks Completed
