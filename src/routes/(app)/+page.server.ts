@@ -9,6 +9,12 @@ type ExpenseListRow = Pick<
 	'id' | 'amount' | 'category' | 'note' | 'spent_at' | 'client_id'
 >;
 
+interface RpcErrorLike {
+	code?: string;
+	message?: string;
+	details?: string;
+}
+
 function wibTodayBoundsUtc(now = new Date()): { start: string; end: string } {
 	const wibParts = new Intl.DateTimeFormat('en-CA', {
 		timeZone: 'Asia/Jakarta',
@@ -35,11 +41,34 @@ function getUserId(locals: App.Locals): string {
 	return userId;
 }
 
+function maybeGetUserId(locals: App.Locals): string | null {
+	return locals.user?.id ?? locals.session?.user?.id ?? null;
+}
+
 function getHouseholdId(locals: App.Locals): string {
 	if (!locals.householdId) {
 		throw redirect(303, '/onboarding');
 	}
 	return locals.householdId;
+}
+
+function isOfflineSync(formData: FormData): boolean {
+	return formData.get('sync_mode') === 'offline';
+}
+
+function isAuthRpcError(error: RpcErrorLike): boolean {
+	const message = error.message?.toLowerCase() ?? '';
+	return error.code === '28000' || message.includes('not authenticated') || message.includes('jwt');
+}
+
+function isHouseholdAccessRpcError(error: RpcErrorLike): boolean {
+	const message = error.message?.toLowerCase() ?? '';
+	return (
+		error.code === '42501' ||
+		message.includes('household access denied') ||
+		message.includes('row-level security') ||
+		message.includes('permission denied')
+	);
 }
 
 function asExpenseListRow(row: unknown): ExpenseListRow {
@@ -81,9 +110,26 @@ export const load: PageServerLoad = async ({ locals }) => {
 export const actions: Actions = {
 	saveExpense: async ({ request, locals }) => {
 		const householdId = getHouseholdId(locals);
-		getUserId(locals);
 		const supabase = locals.supabase as any;
 		const formData = await request.formData();
+		if (!maybeGetUserId(locals)) {
+			if (isOfflineSync(formData)) {
+				return fail(401, {
+					error: 'Sign in again to sync this expense.',
+					syncErrorCode: 'auth'
+				});
+			}
+			getUserId(locals);
+		}
+
+		const queuedHouseholdId = formData.get('household_id');
+		if (typeof queuedHouseholdId === 'string' && queuedHouseholdId !== householdId) {
+			return fail(409, {
+				error: 'This expense belongs to a different household.',
+				syncErrorCode: 'household_mismatch'
+			});
+		}
+
 		const parsed = saveExpenseSchema.safeParse({
 			amount: Number(formData.get('amount')),
 			category: formData.get('category'),
@@ -112,11 +158,25 @@ export const actions: Actions = {
 				rpcError.message,
 				rpcError.details
 			);
-			return fail(500, { error: 'Could not save expense.' });
+			if (isAuthRpcError(rpcError)) {
+				return fail(401, {
+					error: 'Sign in again to sync this expense.',
+					syncErrorCode: 'auth'
+				});
+			}
+
+			if (isHouseholdAccessRpcError(rpcError)) {
+				return fail(403, {
+					error: 'Check household access before retrying.',
+					syncErrorCode: 'household_access'
+				});
+			}
+
+			return fail(500, { error: 'Could not save expense.', syncErrorCode: 'unknown' });
 		}
 
 		if (!data?.[0]) {
-			return fail(500, { error: 'Could not save expense.' });
+			return fail(500, { error: 'Could not save expense.', syncErrorCode: 'unknown' });
 		}
 
 		return { success: true, expense: asExpenseListRow(data[0]) };
