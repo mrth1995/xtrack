@@ -3,12 +3,15 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { getSessionGate, isStandalone } from '$lib/auth/session';
+	import { flushExpenseQueue, installExpenseSyncTriggers } from '$lib/offline/expense-sync';
+	import type { LayoutData } from './$types';
 
 	interface Props {
+		data: LayoutData;
 		children: import('svelte').Snippet;
 	}
 
-	let { children }: Props = $props();
+	let { data, children }: Props = $props();
 
 	/**
 	 * In standalone (Home Screen) mode, Safari and the installed-app context
@@ -22,21 +25,44 @@
 	 * avoid a redundant round-trip.
 	 */
 	let standalonePending = $state(browser && isStandalone());
+	let sessionReady = $state(false);
 
-	onMount(async () => {
-		if (!browser || !isStandalone()) {
-			standalonePending = false;
+	onMount(() => {
+		if (!browser) {
 			return;
 		}
 
-		const gate = await getSessionGate();
+		let cleanup: (() => void) | undefined;
 
-		if (!gate.authenticated) {
-			await goto('/auth?session=expired');
-			return;
-		}
+		void (async () => {
+			if (!isStandalone()) {
+				standalonePending = false;
+				sessionReady = true;
+			} else {
+				const gate = await getSessionGate();
 
-		standalonePending = false;
+				if (!gate.authenticated) {
+					await goto('/auth?session=expired');
+					return;
+				}
+
+				sessionReady = true;
+				standalonePending = false;
+			}
+
+			const contextFactory = () => ({
+				sessionReady,
+				householdId: data.householdId
+			});
+
+			cleanup = installExpenseSyncTriggers(contextFactory);
+			// The installed triggers listen for online and visibilitychange; app open flushes once here.
+			if (data.householdId) {
+				void flushExpenseQueue(contextFactory());
+			}
+		})();
+
+		return () => cleanup?.();
 	});
 </script>
 

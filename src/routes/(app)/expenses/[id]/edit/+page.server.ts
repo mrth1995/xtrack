@@ -37,7 +37,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			loadError?.code,
 			loadError?.message
 		);
-		throw error(404, 'Expense not found.');
+		return { localOnly: true, id: params.id };
 	}
 
 	const expense = raw as unknown as EditExpenseRow;
