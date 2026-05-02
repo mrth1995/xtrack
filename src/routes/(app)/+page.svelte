@@ -20,6 +20,7 @@
 		category: string;
 		note: string | null;
 		spent_at: string;
+		client_id: string;
 	}
 
 	let { data }: Props = $props();
