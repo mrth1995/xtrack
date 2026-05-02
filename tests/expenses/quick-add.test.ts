@@ -7,24 +7,24 @@ describe('saveExpense action (INPUT-05)', () => {
 		vi.clearAllMocks();
 	});
 
-	it('inserts expense and returns { success: true, expense } when input is valid', async () => {
+	it('calls save_expense_idempotent RPC and returns { success: true, expense } when input is valid', async () => {
 		const insertedExpense = {
 			id: 'exp-1',
 			amount: 54000,
 			category: 'Food',
 			note: null,
-			spent_at: '2026-04-26T12:00:00.000Z'
+			spent_at: '2026-04-26T12:00:00.000Z',
+			client_id: '00000000-0000-0000-0000-000000000001',
+			household_id: 'household-1'
 		};
-		const single = vi.fn().mockResolvedValue({ data: insertedExpense, error: null });
-		const select = vi.fn().mockReturnValue({ single });
-		const insert = vi.fn().mockReturnValue({ select });
-		const from = vi.fn().mockReturnValue({ insert });
-		const mockSupabase = { from };
+		const rpc = vi.fn().mockResolvedValue({ data: [insertedExpense], error: null });
+		const mockSupabase = { rpc };
 
 		const { actions } = await import('../../src/routes/(app)/+page.server');
 		const body = new URLSearchParams({
 			amount: '54000',
 			category: 'Food',
+			note: 'lunch',
 			client_id: '00000000-0000-0000-0000-000000000001',
 			spent_at: '2026-04-26T12:00:00.000Z'
 		});
@@ -45,17 +45,14 @@ describe('saveExpense action (INPUT-05)', () => {
 		} as never);
 
 		expect(result).toMatchObject({ success: true, expense: insertedExpense });
-		expect(from).toHaveBeenCalledWith('expenses');
-		// T-01 mitigation: household_id MUST come from locals, never from form data
-		expect(insert).toHaveBeenCalledWith(
-			expect.objectContaining({
-				household_id: 'household-1',
-				created_by: 'user-1',
-				amount: 54000,
-				category: 'Food',
-				client_id: '00000000-0000-0000-0000-000000000001'
-			})
-		);
+		expect(rpc).toHaveBeenCalledWith('save_expense_idempotent', {
+			p_household_id: 'household-1',
+			p_amount: 54000,
+			p_category: 'Food',
+			p_note: 'lunch',
+			p_spent_at: '2026-04-26T12:00:00.000Z',
+			p_client_id: '00000000-0000-0000-0000-000000000001'
+		});
 	});
 
 	it('returns fail(400) when amount is 0 (validation)', async () => {
@@ -71,7 +68,7 @@ describe('saveExpense action (INPUT-05)', () => {
 			headers: { 'content-type': 'application/x-www-form-urlencoded' },
 			body
 		});
-		const mockSupabase = { from: vi.fn() };
+		const mockSupabase = { rpc: vi.fn() };
 
 		const result = await actions.saveExpense({
 			request,
@@ -85,7 +82,7 @@ describe('saveExpense action (INPUT-05)', () => {
 
 		// fail() returns { status: 400, data: {...} }
 		expect((result as { status: number }).status).toBe(400);
-		expect(mockSupabase.from).not.toHaveBeenCalled();
+		expect(mockSupabase.rpc).not.toHaveBeenCalled();
 	});
 
 	it('returns fail(400) when category is not in the 7-preset enum (validation)', async () => {
@@ -101,7 +98,7 @@ describe('saveExpense action (INPUT-05)', () => {
 			headers: { 'content-type': 'application/x-www-form-urlencoded' },
 			body
 		});
-		const mockSupabase = { from: vi.fn() };
+		const mockSupabase = { rpc: vi.fn() };
 
 		const result = await actions.saveExpense({
 			request,
@@ -114,7 +111,7 @@ describe('saveExpense action (INPUT-05)', () => {
 		} as never);
 
 		expect((result as { status: number }).status).toBe(400);
-		expect(mockSupabase.from).not.toHaveBeenCalled();
+		expect(mockSupabase.rpc).not.toHaveBeenCalled();
 	});
 
 	it('redirects to /onboarding when locals.householdId is missing', async () => {
@@ -138,41 +135,24 @@ describe('saveExpense action (INPUT-05)', () => {
 					session: { user: { id: 'user-1' } },
 					user: { id: 'user-1' },
 					householdId: null,
-					supabase: { from: vi.fn() }
+					supabase: { rpc: vi.fn() }
 				}
 			} as never)
 		).rejects.toMatchObject({ status: 303, location: '/onboarding' });
 	});
 
-	it('returns { success: true, duplicate: true, expense } when duplicate client_id (23505) is detected — deterministic path (Codex Cycle 3 MEDIUM)', async () => {
-		// Codex Cycle 3: The UAT rapid-tap simulation is NOT a reliable test of the 23505 path
-		// because client_id is regenerated after each successful save. This test exercises the
-		// 23505 server path directly by mocking the insert to return error code '23505' and the
-		// subsequent select (for the existing row) to return the original expense.
+	it('returns { success: true, expense } when RPC resolves an idempotent client_id retry', async () => {
 		const existingExpense = {
 			id: 'exp-original',
 			amount: 54000,
 			category: 'Food',
 			note: null,
-			spent_at: '2026-04-26T12:00:00.000Z'
+			spent_at: '2026-04-26T12:00:00.000Z',
+			client_id: '00000000-0000-0000-0000-000000000001',
+			household_id: 'household-1'
 		};
-		// Mock insert → 23505 conflict
-		const insertSingle = vi.fn().mockResolvedValue({ data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } });
-		const insertSelect = vi.fn().mockReturnValue({ single: insertSingle });
-		const insertFn = vi.fn().mockReturnValue({ select: insertSelect });
-		// Mock recovery select → existing row
-		const maybeSingle = vi.fn().mockResolvedValue({ data: existingExpense, error: null });
-		const eqHousehold = vi.fn().mockReturnValue({ maybeSingle });
-		const eqClientId = vi.fn().mockReturnValue({ eq: eqHousehold });
-		const recoverSelect = vi.fn().mockReturnValue({ eq: eqClientId });
-		// from('expenses') returns different chains for insert vs select
-		let callCount = 0;
-		const from = vi.fn().mockImplementation(() => {
-			callCount++;
-			if (callCount === 1) return { insert: insertFn };
-			return { select: recoverSelect };
-		});
-		const mockSupabase = { from };
+		const rpc = vi.fn().mockResolvedValue({ data: [existingExpense], error: null });
+		const mockSupabase = { rpc };
 
 		const { actions } = await import('../../src/routes/(app)/+page.server');
 		const body = new URLSearchParams({
@@ -197,9 +177,15 @@ describe('saveExpense action (INPUT-05)', () => {
 			}
 		} as never);
 
-		// Server must return success:true, duplicate:true, and the existing expense row
-		expect(result).toMatchObject({ success: true, duplicate: true });
+		expect(result).toMatchObject({ success: true });
 		expect((result as Record<string, unknown>).expense).toMatchObject({ id: 'exp-original' });
+		expect(rpc).toHaveBeenCalledWith(
+			'save_expense_idempotent',
+			expect.objectContaining({
+				p_household_id: 'household-1',
+				p_client_id: '00000000-0000-0000-0000-000000000001'
+			})
+		);
 	});
 });
 
