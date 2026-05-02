@@ -557,17 +557,17 @@ export function mergeExpenseRows(serverRows: ExpenseViewItem[], localRows: Expen
 | A4 | Local/server merge should use `client_id` for dedupe and `server_id ?? client_id` for view identity. | Common Pitfalls / Code Examples | If current generated types omit `client_id` from list rows, planner must add it to selects before merge works. |
 | A5 | Unauthorized retry storms are likely without failure classification. | Common Pitfalls | If wrong, backoff may be overbuilt; if right and ignored, app can spam Supabase after auth/RLS failures. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should queue flush use a new JSON endpoint or existing form action?**
    - What we know: Current Quick Add uses SvelteKit form actions with `use:enhance`; queue flushes are programmatic and do not need progressive enhancement. [VERIFIED: src/routes/(app)/+page.svelte; CITED: SvelteKit form actions docs]
-   - What's unclear: Whether project style prefers named actions for all mutations or accepts a small `+server.ts` endpoint/RPC wrapper for programmatic sync. [ASSUMED]
-   - Recommendation: Keep `saveExpense` as the UI path but factor shared server logic into a helper; queue flush can call a dedicated action-compatible endpoint only if planner wants clearer tests. [ASSUMED]
+   - Resolution: Queue flush uses the existing `saveExpense` form action endpoint unless implementation later discovers a blocker. This keeps offline replay on the same validation, auth, household, and idempotent RPC path as normal Quick Add saves.
+   - Implementation note: The sync module should default to the action-compatible endpoint `/?/saveExpense`, with an injectable endpoint only for tests or a discovered implementation blocker.
 
 2. **Should successful queued rows remain in IndexedDB after attaching server `id`?**
    - What we know: D-17 says attach server `id` after successful sync, but success criteria say synced status disappears. [VERIFIED: 03-CONTEXT.md]
-   - What's unclear: Whether local queue should delete successful records immediately or retain synced metadata briefly for reconciliation. [ASSUMED]
-   - Recommendation: Delete successful queue records after UI has merged the server row; if immediate list reload is not available, update local row with `server_id` then remove on next server data refresh. [ASSUMED]
+   - Resolution: Successful queued rows are removed from IndexedDB after the server row is reconciled into visible state; only transient in-memory reconciliation is allowed.
+   - Implementation note: Attach/use the returned server `id` in memory for the current merge, then remove the IndexedDB row so synced records render like normal server rows and do not retain local synced metadata.
 
 ## Environment Availability
 
