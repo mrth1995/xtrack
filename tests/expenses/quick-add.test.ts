@@ -14,8 +14,7 @@ describe('saveExpense action (INPUT-05)', () => {
 			category: 'Food',
 			note: null,
 			spent_at: '2026-04-26T12:00:00.000Z',
-			client_id: '00000000-0000-0000-0000-000000000001',
-			household_id: 'household-1'
+			client_id: '00000000-0000-0000-0000-000000000001'
 		};
 		const rpc = vi.fn().mockResolvedValue({ data: [insertedExpense], error: null });
 		const mockSupabase = { rpc };

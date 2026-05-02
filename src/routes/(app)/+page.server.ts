@@ -4,13 +4,10 @@ import { saveExpenseSchema, saveNoteSchema } from '$lib/expenses/schemas';
 import type { Database } from '$lib/types/database';
 
 type ExpenseRow = Database['public']['Tables']['expenses']['Row'];
-type ExpenseListRow = Pick<ExpenseRow, 'id' | 'amount' | 'category' | 'note' | 'spent_at'>;
-
-interface PostgrestErrorLike {
-	code?: string;
-	message?: string;
-	details?: string;
-}
+type ExpenseListRow = Pick<
+	ExpenseRow,
+	'id' | 'amount' | 'category' | 'note' | 'spent_at' | 'client_id'
+>;
 
 function wibTodayBoundsUtc(now = new Date()): { start: string; end: string } {
 	const wibParts = new Intl.DateTimeFormat('en-CA', {
@@ -52,7 +49,8 @@ function asExpenseListRow(row: unknown): ExpenseListRow {
 		amount: expense.amount,
 		category: expense.category,
 		note: expense.note,
-		spent_at: expense.spent_at
+		spent_at: expense.spent_at,
+		client_id: expense.client_id
 	};
 }
 
@@ -63,7 +61,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	const { data, error: expensesError } = await supabase
 		.from('expenses')
-		.select('id, amount, category, note, spent_at')
+		.select('id, amount, category, note, spent_at, client_id')
 		.eq('household_id', householdId)
 		.eq('is_deleted', false)
 		.gte('spent_at', start)
@@ -83,12 +81,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 export const actions: Actions = {
 	saveExpense: async ({ request, locals }) => {
 		const householdId = getHouseholdId(locals);
-		const userId = getUserId(locals);
+		getUserId(locals);
 		const supabase = locals.supabase as any;
 		const formData = await request.formData();
 		const parsed = saveExpenseSchema.safeParse({
 			amount: Number(formData.get('amount')),
 			category: formData.get('category'),
+			note: formData.get('note')?.toString() ?? undefined,
 			client_id: formData.get('client_id'),
 			spent_at: formData.get('spent_at')
 		});
@@ -97,48 +96,30 @@ export const actions: Actions = {
 			return fail(400, { error: 'Invalid expense input.' });
 		}
 
-		const { data, error: insertError } = await supabase
-			.from('expenses')
-			.insert({
-				household_id: locals.householdId,
-				created_by: userId,
-				amount: parsed.data.amount,
-				category: parsed.data.category,
-				note: null,
-				spent_at: parsed.data.spent_at,
-				client_id: parsed.data.client_id
-			})
-			.select('id, amount, category, note, spent_at')
-			.single();
+		const { data, error: rpcError } = await supabase.rpc('save_expense_idempotent', {
+			p_household_id: householdId,
+			p_amount: parsed.data.amount,
+			p_category: parsed.data.category,
+			p_note: parsed.data.note ?? null,
+			p_spent_at: parsed.data.spent_at,
+			p_client_id: parsed.data.client_id
+		});
 
-		if (!insertError) {
-			return { success: true, expense: asExpenseListRow(data) };
+		if (rpcError) {
+			console.error(
+				'[/+page.server] save_expense_idempotent failed:',
+				rpcError.code,
+				rpcError.message,
+				rpcError.details
+			);
+			return fail(500, { error: 'Could not save expense.' });
 		}
 
-		if ((insertError as PostgrestErrorLike).code === '23505') {
-			let recoveryQuery = supabase
-				.from('expenses')
-				.select('id, amount, category, note, spent_at')
-				.eq('client_id', parsed.data.client_id)
-				.eq('household_id', householdId);
-
-			if ('eq' in recoveryQuery && typeof recoveryQuery.eq === 'function') {
-				recoveryQuery = recoveryQuery.eq('is_deleted', false);
-			}
-
-			const { data: existing, error: recoveryError } = await recoveryQuery.maybeSingle();
-			if (!recoveryError && existing) {
-				return { success: true, duplicate: true, expense: asExpenseListRow(existing) };
-			}
+		if (!data?.[0]) {
+			return fail(500, { error: 'Could not save expense.' });
 		}
 
-		console.error(
-			'[/+page.server] expense insert failed:',
-			insertError.code,
-			insertError.message,
-			insertError.details
-		);
-		return fail(500, { error: 'Could not save expense.' });
+		return { success: true, expense: asExpenseListRow(data[0]) };
 	},
 
 	saveNote: async ({ request, locals }) => {

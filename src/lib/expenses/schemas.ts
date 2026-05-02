@@ -31,6 +31,7 @@ export const saveExpenseSchema = z.object({
 	category: z.enum(VALID_CATEGORIES, {
 		message: 'Invalid category'
 	}),
+	note: z.string().max(500, 'Note must be 500 characters or fewer').nullable().optional(),
 	client_id: z.string().regex(uuidShape, 'Invalid client_id (must be a UUID)'),
 	spent_at: z.string().datetime('spent_at must be an ISO 8601 datetime')
 });
