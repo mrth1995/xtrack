@@ -140,6 +140,135 @@ describe('saveExpense action (INPUT-05)', () => {
 		).rejects.toMatchObject({ status: 303, location: '/onboarding' });
 	});
 
+	it('returns syncErrorCode: auth when offline sync runs after session expiry', async () => {
+		const { actions } = await import('../../src/routes/(app)/+page.server');
+		const body = new URLSearchParams({
+			amount: '54000',
+			category: 'Food',
+			client_id: '00000000-0000-0000-0000-000000000001',
+			spent_at: '2026-04-26T12:00:00.000Z',
+			sync_mode: 'offline'
+		});
+		const request = new Request('http://localhost:5173/', {
+			method: 'POST',
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			body
+		});
+		const rpc = vi.fn();
+
+		const result = await actions.saveExpense({
+			request,
+			locals: {
+				session: null,
+				user: null,
+				householdId: 'household-1',
+				supabase: { rpc }
+			}
+		} as never);
+
+		expect((result as { status: number }).status).toBe(401);
+		expect((result as { data: { syncErrorCode: string } }).data.syncErrorCode).toBe('auth');
+		expect(rpc).not.toHaveBeenCalled();
+	});
+
+	it('returns syncErrorCode: household_mismatch without RPC when queued household differs', async () => {
+		const { actions } = await import('../../src/routes/(app)/+page.server');
+		const body = new URLSearchParams({
+			amount: '54000',
+			category: 'Food',
+			client_id: '00000000-0000-0000-0000-000000000001',
+			household_id: 'stale-household',
+			spent_at: '2026-04-26T12:00:00.000Z'
+		});
+		const request = new Request('http://localhost:5173/', {
+			method: 'POST',
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			body
+		});
+		const rpc = vi.fn();
+
+		const result = await actions.saveExpense({
+			request,
+			locals: {
+				session: { user: { id: 'user-1' } },
+				user: { id: 'user-1' },
+				householdId: 'household-1',
+				supabase: { rpc }
+			}
+		} as never);
+
+		expect((result as { status: number }).status).toBe(409);
+		expect((result as { data: { syncErrorCode: string } }).data.syncErrorCode).toBe(
+			'household_mismatch'
+		);
+		expect(rpc).not.toHaveBeenCalled();
+	});
+
+	it('returns syncErrorCode: household_access when RPC denies household membership', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const rpc = vi.fn().mockResolvedValue({
+			data: null,
+			error: { code: '42501', message: 'household access denied', details: null }
+		});
+		const { actions } = await import('../../src/routes/(app)/+page.server');
+		const body = new URLSearchParams({
+			amount: '54000',
+			category: 'Food',
+			client_id: '00000000-0000-0000-0000-000000000001',
+			spent_at: '2026-04-26T12:00:00.000Z'
+		});
+		const request = new Request('http://localhost:5173/', {
+			method: 'POST',
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			body
+		});
+
+		const result = await actions.saveExpense({
+			request,
+			locals: {
+				session: { user: { id: 'user-1' } },
+				user: { id: 'user-1' },
+				householdId: 'household-1',
+				supabase: { rpc }
+			}
+		} as never);
+
+		expect((result as { status: number }).status).toBe(403);
+		expect((result as { data: { syncErrorCode: string } }).data.syncErrorCode).toBe(
+			'household_access'
+		);
+		consoleError.mockRestore();
+	});
+
+	it('returns syncErrorCode: unknown when RPC returns no row', async () => {
+		const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+		const { actions } = await import('../../src/routes/(app)/+page.server');
+		const body = new URLSearchParams({
+			amount: '54000',
+			category: 'Food',
+			client_id: '00000000-0000-0000-0000-000000000001',
+			spent_at: '2026-04-26T12:00:00.000Z'
+		});
+		const request = new Request('http://localhost:5173/', {
+			method: 'POST',
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			body
+		});
+
+		const result = await actions.saveExpense({
+			request,
+			locals: {
+				session: { user: { id: 'user-1' } },
+				user: { id: 'user-1' },
+				householdId: 'household-1',
+				supabase: { rpc }
+			}
+		} as never);
+
+		expect((result as { status: number }).status).toBe(500);
+		expect((result as { data: { syncErrorCode: string } }).data.syncErrorCode).toBe('unknown');
+	});
+
 	it('returns { success: true, expense } when RPC resolves an idempotent client_id retry', async () => {
 		const existingExpense = {
 			id: 'exp-original',
