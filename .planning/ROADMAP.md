@@ -71,7 +71,13 @@ Plans:
   1. Expense logged while offline appears in the list immediately and syncs to Supabase when connectivity returns
   2. Retrying a queued expense never creates a duplicate in Supabase (server-side idempotency enforced)
   3. An entry stuck in "syncing" for more than 5 minutes is automatically reset to "queued" on next app open
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 03-01-PLAN.md — Wave 0 validation scaffolding for offline queue, sync, and browser flow
+- [ ] 03-02-PLAN.md — Idempotent Supabase RPC, save action wiring, and blocking schema push
+- [ ] 03-03-PLAN.md — IndexedDB queue storage, stale syncing recovery, and flush orchestration
+- [ ] 03-04-PLAN.md — Quick Add, status rows, history, lifecycle triggers, and queued edit/delete wiring
+- [ ] 03-05-PLAN.md — Browser offline acceptance gate and Phase 03 UAT evidence
 
 ### Phase 4: PWA + Realtime
 **Goal**: App is fully installable to iOS and Android home screens with offline shell loading; both household members see each other's expenses appear in real time
