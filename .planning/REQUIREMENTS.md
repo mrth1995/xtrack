@@ -45,9 +45,9 @@
 
 ### Core Input — Offline
 
-- [ ] **INPUT-08**: Expense logged without connectivity is queued in IndexedDB with `sync_status: "queued"`
-- [ ] **INPUT-09**: Queue flushes to Supabase on foreground resume (`visibilitychange`) and on `online` event
-- [ ] **INPUT-10**: `IN_FLIGHT` recovery: any queued entry stuck in `"syncing"` for >5 min is reset to `"queued"` on app open
+- [x] **INPUT-08**: Expense logged without connectivity is queued in IndexedDB with `sync_status: "queued"`
+- [x] **INPUT-09**: Queue flushes to Supabase on foreground resume (`visibilitychange`) and on `online` event
+- [x] **INPUT-10**: `IN_FLIGHT` recovery: any queued entry stuck in `"syncing"` for >5 min is reset to `"queued"` on app open
 - [ ] **INPUT-11**: Server insert uses `ON CONFLICT (client_id) DO NOTHING` for idempotent retry safety
 
 ### Core Input — Edit & Delete
@@ -150,9 +150,9 @@
 | INPUT-12 | Phase 2 | Complete |
 | INPUT-13 | Phase 2 | Complete |
 | INPUT-14 | Phase 2 | Complete |
-| INPUT-08 | Phase 3 | Pending |
-| INPUT-09 | Phase 3 | Pending |
-| INPUT-10 | Phase 3 | Pending |
+| INPUT-08 | Phase 3 | Complete |
+| INPUT-09 | Phase 3 | Complete |
+| INPUT-10 | Phase 3 | Complete |
 | INPUT-11 | Phase 3 | Pending |
 | PWA-01 | Phase 4 | Pending |
 | PWA-03 | Phase 4 | Pending |

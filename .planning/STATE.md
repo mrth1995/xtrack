@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-05-02T13:32:09.817Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-05-02T13:47:02.725Z"
 last_activity: 2026-05-02
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 19
-  completed_plans: 15
-  percent: 79
+  completed_plans: 16
+  percent: 84
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-01)
 ## Current Position
 
 Phase: 03 (offline-tolerance) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-05-02
 
-Progress: [████████░░] 79%
+Progress: [████████░░] 84%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [████████░░] 79%
 | Phase 02-quick-add P02 | 11 min | 1 tasks | 10 files |
 | Phase 02-quick-add P03 | 5 min | 3 tasks | 5 files |
 | Phase 03-offline-tolerance P01 | 3 min | 3 tasks | 7 files |
+| Phase 03-offline-tolerance P03 | 372s | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,8 @@ Recent decisions affecting current work:
 - [Phase 02-quick-add]: Edit/delete routes rely on Supabase RLS for household scoping while app code filters id and is_deleted=false. — saveEdit and deleteExpense use guarded soft-delete/update flows for stale-form protection.
 - [Phase 03-01]: Use Playwright browser offline simulation for Phase 03 acceptance coverage before installed-PWA UAT. — Browser simulation satisfies D-24 through D-26 while installed-PWA UAT remains Phase 04 scope.
 - [Phase 03-01]: Keep offline unit tests RED by importing future contracts without adding implementation stubs in Wave 0. — Later plans must satisfy the queue and sync contracts rather than inherit placeholder runtime modules.
+- [Phase 03-03]: Use explicit syncErrorCode mapping for offline flush failures. — Auth, household access, and household mismatch rows remain local failed rows and are not retried inside the same flush loop.
+- [Phase 03-03]: Treat browser offline state and thrown fetch failures as network failures. — Rows return to queued so normal lifecycle triggers can retry without data loss.
 
 ### Pending Todos
 
@@ -91,12 +94,12 @@ None yet.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none)* | | | |
+| Out-of-scope verification blocker | `npm run check` fails in `src/routes/(app)/+page.svelte` because `SavedExpense` lacks required `client_id` when prepending into `todayExpenses`; this appears tied to prior 03-02 work and was not modified in 03-03. | Open | Phase 03 Plan 03 |
 
 ## Session Continuity
 
-Last session: 2026-05-02T13:31:28.938Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-05-02T13:47:02.719Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
 
 ### Quick Tasks Completed
