@@ -413,17 +413,17 @@ manifest: {
 | A2 | Forgetting channel cleanup will manifest as duplicate callbacks after navigation. | Common Pitfalls | Planner may omit route navigation cleanup tests. |
 | A3 | Receiving unrelated Realtime payloads in logs is a warning sign of missing filter/scope. | Common Pitfalls | Planner may not include enough instrumentation/test assertions. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Will the remote Supabase project have Realtime replication enabled for `public.expenses`?**  
+1. **RESOLVED by Plan 04-03: Will the remote Supabase project have Realtime replication enabled for `public.expenses`?**  
    What we know: Local `supabase/config.toml` has a `[realtime]` section, but the research did not verify remote publication/table settings. [VERIFIED: supabase/config.toml grep]  
    What's unclear: Whether the deployed Supabase project is already publishing `expenses` changes to Realtime. [ASSUMED]  
-   Recommendation: Include a migration or manual verification step to ensure `expenses` is enabled for Realtime before UAT. [CITED: Supabase Postgres Changes docs]
+   Resolution: Plan `04-03` includes a `[BLOCKING]` non-autonomous Supabase Realtime publication migration and push/manual verification gate before UAT. [RESOLVED: 04-03-PLAN.md]
 
-2. **Should Android guidance use a custom install button or only improved copy?**  
+2. **RESOLVED by Plan 04-06: Should Android guidance use a custom install button or only improved copy?**  
    What we know: MDN documents `beforeinstallprompt` as the in-page prompt mechanism and states it is not supported on iOS. [CITED: MDN Making PWAs installable]  
    What's unclear: Whether Phase 04 UX should include a visible Android install button or just platform-aware instructions. [VERIFIED: Phase 04 CONTEXT.md leaves exact behavior open]  
-   Recommendation: Plan a small Android prompt path because D-03 asks for clearer platform-aware behavior. [VERIFIED: Phase 04 D-03]
+   Resolution: Plan `04-06` implements a platform-aware Android prompt path with a visible `Install app` CTA when `beforeinstallprompt` is available, while keeping iOS manual instructions. [RESOLVED: 04-06-PLAN.md]
 
 ## Environment Availability
 
