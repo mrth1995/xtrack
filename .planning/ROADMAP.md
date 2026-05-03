@@ -77,7 +77,7 @@ Plans:
 - [x] 03-02-PLAN.md — Idempotent Supabase RPC, save action wiring, and blocking schema push
 - [x] 03-03-PLAN.md — IndexedDB queue storage, stale syncing recovery, and flush orchestration
 - [x] 03-04-PLAN.md — Quick Add, status rows, history, lifecycle triggers, and queued edit/delete wiring
-- [ ] 03-05-PLAN.md — Browser offline acceptance gate and Phase 03 UAT evidence
+- [x] 03-05-PLAN.md — Browser offline acceptance gate and Phase 03 UAT evidence (completed 2026-05-02)
 
 ### Phase 4: PWA + Realtime
 **Goal**: App is fully installable to iOS and Android home screens with offline shell loading; both household members see each other's expenses appear in real time
