@@ -132,7 +132,7 @@ Copy rules:
 |---------|----------|
 | Quick Add home | Preserve Phase 2 layout exactly: install guidance at top, gear menu, amount, numpad, categories, Today list, history link. Phase 4 additions must not push the numpad below the first mobile viewport more than the existing install banner already does. |
 | Install guidance banner | Upgrade `InstallGuidanceBanner.svelte` rather than replacing it. Keep a non-modal banner at the top of the authenticated shell. Hide in standalone mode. Dismissal snoozes. Platform-aware body/action changes are allowed. |
-| Offline/stale notice | Add a compact, non-modal notice near the top of the signed-in shell, below install guidance when both are visible. Use `--color-surface`, 12px radius, `p-3` or `p-4`, 14px/16px text. It must not cover the numpad, category grid, or list. |
+| Offline/stale notice | Add a compact, non-modal notice near the top of the signed-in shell, below install guidance when both are visible. Use `--color-surface`, 12px radius, `p-4`, 14px/16px text. It must not cover the numpad, category grid, or list. |
 | Cached app shell fallback | When offline after a prior visit, the app shell should look like the real xtrack app, not a browser error page. If protected data is unavailable, show a centered fallback with the normal background and muted body copy. |
 | Today expense list | Preserve flat list rows and dividers. Add optional per-row highlight state for partner realtime inserts. Existing queued/syncing/failed row statuses remain unchanged. |
 | History route | No live update surface in Phase 4. It continues to refresh on route open/navigation. |
