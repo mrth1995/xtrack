@@ -88,11 +88,12 @@ Plans:
   2. App shell loads when the device is offline (after at least one prior visit)
   3. When one household member saves an expense, it appears on the other member's expense list without a manual refresh
   4. The current user's own new expense does not cause a redundant re-render via the Realtime channel
-**Plans**: 5 plans
+**Plans**: 6 plans
 Plans:
 - [ ] 04-01-PLAN.md — Create Wave 0 PWA and Realtime validation scaffolding
-- [ ] 04-02-PLAN.md — Implement PWA manifest, install guidance, icons, service worker, and offline shell notice
+- [ ] 04-02-PLAN.md — Implement PWA manifest, icons, service worker precache, and iOS metadata
 - [ ] 04-03-PLAN.md — Add and verify Supabase Realtime publication for public.expenses
+- [ ] 04-06-PLAN.md — Wire platform-aware install guidance and offline shell notice
 - [ ] 04-04-PLAN.md — Implement household-scoped Realtime Today merge, skip, replacement, and highlight behavior
 - [ ] 04-05-PLAN.md — Run final automated gate plus iOS/Android install and live household Realtime UAT
 **UI hint**: yes
