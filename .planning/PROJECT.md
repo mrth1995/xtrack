@@ -34,6 +34,7 @@ Logging an expense must feel effortless — from the moment the user thinks "I j
 - [x] Manual quick-add is the authenticated home screen — custom numpad, category tiles, optimistic save, duplicate-save defenses, and Today list are implemented. *Validated in Phase 02: quick-add*
 - [x] Optional free-text note per expense — post-save note sheet supports save and skip flows. *Validated in Phase 02: quick-add*
 - [x] Edit and delete logged expenses — full history, edit form, WIB date round-trip, and soft delete are implemented. *Validated in Phase 02: quick-add*
+- [x] Offline-tolerant expense capture — IndexedDB queue, visible unsynced states, stale syncing recovery, lifecycle flush, and idempotent server retry are implemented. *Validated in Phase 03: offline-tolerance*
 
 ### Active
 
@@ -118,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-01 — Phase 02 complete: Quick Add home flow, optional notes, history, edit, and soft delete*
+*Last updated: 2026-05-03 — Phase 03 complete: offline queue, sync recovery, browser acceptance gate, and idempotent retry*
