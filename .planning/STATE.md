@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Phase 04 context gathered
+stopped_at: Phase 4 UI-SPEC approved
 last_updated: "2026-05-17T06:18:04.942Z"
 last_activity: 2026-05-03 -- Phase 03 verified complete
 progress:
@@ -109,8 +109,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-17T06:18:04.939Z
-Stopped at: Phase 04 context gathered
-Resume file: .planning/phases/04-pwa-realtime/04-CONTEXT.md
+Stopped at: Phase 4 UI-SPEC approved
+Resume file: .planning/phases/04-pwa-realtime/04-UI-SPEC.md
 
 ### Quick Tasks Completed
 
